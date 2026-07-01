@@ -4,12 +4,9 @@ function OrgSelector({
   onOrgChange,
   actions,
   activeAction,
-  spaces,
-  selectedSpace,
-  onSpaceChange,
-  showSpaceDetailsControl,
-  onLoadSpaceDetails,
-  loadingSpaceDetails,
+  detailControl,
+  onDetailItemChange,
+  onLoadResourceDetails,
 }) {
   return (
     <div className="org-selector">
@@ -37,28 +34,30 @@ function OrgSelector({
             {activeAction === action.id ? action.loadingLabel : action.label}
           </button>
 
-          {action.id === "spaces" && showSpaceDetailsControl ? (
-            <div className="space-details-control">
-              <label htmlFor="spaceSelect">Space</label>
+          {detailControl.visible && detailControl.resourceId === action.id ? (
+            <div className="resource-details-control">
+              <label htmlFor={`${action.id}Select`}>{detailControl.detailLabel}</label>
               <select
-                id="spaceSelect"
-                value={selectedSpace}
-                onChange={(event) => onSpaceChange(event.target.value)}
+                id={`${action.id}Select`}
+                value={detailControl.selectedItem}
+                onChange={(event) => onDetailItemChange(event.target.value)}
               >
-                <option value="">Select a space</option>
-                {spaces.map((space) => (
-                  <option key={space} value={space}>
-                    {space}
+                <option value="">Select {detailControl.detailLabel.toLowerCase()}</option>
+                {detailControl.items.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
                   </option>
                 ))}
               </select>
 
               <button
                 className="btn"
-                onClick={onLoadSpaceDetails}
-                disabled={loadingSpaceDetails || !selectedSpace}
+                onClick={onLoadResourceDetails}
+                disabled={detailControl.loading || !detailControl.selectedItem}
               >
-                {loadingSpaceDetails ? "Loading space details..." : "Load Space Details"}
+                {detailControl.loading
+                  ? `Loading ${detailControl.detailLabel.toLowerCase()} details...`
+                  : detailControl.detailButtonLabel}
               </button>
             </div>
           ) : null}

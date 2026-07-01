@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   fetchAndSaveTokenFromBackend,
+  fetchOrganizationApiDetails,
   fetchOrganizationApis,
+  fetchOrganizationAppDetails,
   fetchOrganizationApps,
+  fetchOrganizationDeveloperDetails,
   fetchOrganizationDevelopers,
   fetchOrganizationDetails,
+  fetchOrganizationEnvironmentDetails,
   fetchOrganizationEnvironments,
+  fetchOrganizationInstanceDetails,
   fetchOrganizationInstances,
   fetchOrganizationSpaceDetails,
+  fetchOrganizationSharedflowDetails,
   fetchOrganizationSharedflows,
   fetchOrganizationSpaces,
   fetchOrganizations,
@@ -19,6 +25,76 @@ import SideNav from "./components/SideNav";
 import TopBar from "./components/TopBar";
 import { getStoredToken, saveToken } from "./utils/tokenStore";
 
+const RESOURCE_ARRAY_KEYS = {
+  instances: ["instances"],
+  apis: ["apis", "proxies"],
+  spaces: ["spaces", "spaceNames"],
+  environments: ["environments"],
+  developers: ["developers", "developer"],
+  apps: ["apps", "app"],
+  sharedflows: ["sharedflows"],
+};
+
+const EMPTY_DETAIL_CONTROL = {
+  resourceId: "",
+  visible: false,
+  detailLabel: "Item",
+  detailButtonLabel: "Load Details",
+  items: [],
+  selectedItem: "",
+  loading: false,
+};
+
+function normalizeResourceName(item) {
+  if (typeof item === "string") {
+    const parts = item.split("/");
+    return parts[parts.length - 1];
+  }
+
+  if (!item || typeof item !== "object") {
+    return "";
+  }
+
+  const nameKeys = ["name", "email", "appId", "id", "developerId", "instanceId", "displayName"];
+  for (const key of nameKeys) {
+    if (typeof item[key] === "string" && item[key].trim().length > 0) {
+      const parts = item[key].split("/");
+      return parts[parts.length - 1];
+    }
+  }
+
+  return "";
+}
+
+function extractResourceNames(payload, resourceId) {
+  const fromArray = (arr) => {
+    const names = arr.map(normalizeResourceName).filter((name) => name.trim().length > 0);
+    return [...new Set(names)];
+  };
+
+  if (Array.isArray(payload)) {
+    return fromArray(payload);
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const candidateKeys = RESOURCE_ARRAY_KEYS[resourceId] || [];
+  for (const key of candidateKeys) {
+    if (Array.isArray(payload[key])) {
+      return fromArray(payload[key]);
+    }
+  }
+
+  const firstArrayKey = Object.keys(payload).find((key) => Array.isArray(payload[key]));
+  if (firstArrayKey) {
+    return fromArray(payload[firstArrayKey]);
+  }
+
+  return [];
+}
+
 function App() {
   const [token, setToken] = useState(getStoredToken());
   const [orgs, setOrgs] = useState([]);
@@ -26,10 +102,7 @@ function App() {
   const [resultJson, setResultJson] = useState({ message: "Loading organizations from config..." });
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [activeAction, setActiveAction] = useState("");
-  const [spaces, setSpaces] = useState([]);
-  const [selectedSpace, setSelectedSpace] = useState("");
-  const [showSpaceDetailsControl, setShowSpaceDetailsControl] = useState(false);
-  const [loadingSpaceDetails, setLoadingSpaceDetails] = useState(false);
+  const [detailControl, setDetailControl] = useState(EMPTY_DETAIL_CONTROL);
   const [loadingToken, setLoadingToken] = useState(false);
 
   const tokenReady = useMemo(() => token && token.trim().length > 0, [token]);
@@ -48,34 +121,9 @@ function App() {
     }
   };
 
-  const extractSpaceNames = (payload) => {
-    if (Array.isArray(payload)) {
-      return payload.filter((item) => typeof item === "string" && item.trim().length > 0);
-    }
-
-    if (Array.isArray(payload.spaces)) {
-      return payload.spaces
-        .map((item) => {
-          if (typeof item === "string") {
-            return item;
-          }
-          if (item && typeof item.name === "string") {
-            const parts = item.name.split("/");
-            return parts[parts.length - 1];
-          }
-          return "";
-        })
-        .filter((name) => name.trim().length > 0);
-    }
-
-    return [];
-  };
-
   const handleOrgChange = (orgName) => {
     setSelectedOrg(orgName);
-    setShowSpaceDetailsControl(false);
-    setSpaces([]);
-    setSelectedSpace("");
+    setDetailControl(EMPTY_DETAIL_CONTROL);
   };
 
   useEffect(() => {
@@ -106,6 +154,7 @@ function App() {
     try {
       const payload = await fetcher(token, selectedOrg);
       setResultJson(payload);
+      setDetailControl(EMPTY_DETAIL_CONTROL);
     } catch (error) {
       setResultJson({ error: error.message });
     } finally {
@@ -113,44 +162,54 @@ function App() {
     }
   };
 
-  const handleLoadSpaces = async () => {
+  const loadOrgResourceList = async (action) => {
     if (!tokenReady || !selectedOrg) {
       setResultJson({ error: "Select an organization and ensure token is saved." });
       return;
     }
 
-    setActiveAction("spaces");
+    setActiveAction(action.id);
     try {
-      const payload = await fetchOrganizationSpaces(token, selectedOrg);
-      const spaceNames = extractSpaceNames(payload);
-      setSpaces(spaceNames);
-      setSelectedSpace(spaceNames[0] || "");
-      setShowSpaceDetailsControl(true);
+      const payload = await action.listFetcher(token, selectedOrg);
+      const names = extractResourceNames(payload, action.id);
+      setDetailControl({
+        resourceId: action.id,
+        visible: true,
+        detailLabel: action.detailLabel,
+        detailButtonLabel: action.detailButtonLabel,
+        items: names,
+        selectedItem: names[0] || "",
+        loading: false,
+      });
       setResultJson(payload);
     } catch (error) {
       setResultJson({ error: error.message });
-      setShowSpaceDetailsControl(false);
-      setSpaces([]);
-      setSelectedSpace("");
+      setDetailControl(EMPTY_DETAIL_CONTROL);
     } finally {
       setActiveAction("");
     }
   };
 
-  const handleLoadSpaceDetails = async () => {
-    if (!tokenReady || !selectedOrg || !selectedSpace) {
-      setResultJson({ error: "Select an organization and a space name first." });
+  const handleLoadResourceDetails = async () => {
+    if (!tokenReady || !selectedOrg || !detailControl.selectedItem) {
+      setResultJson({ error: "Select an organization and a resource name first." });
       return;
     }
 
-    setLoadingSpaceDetails(true);
+    const action = orgActions.find((item) => item.id === detailControl.resourceId);
+    if (!action || !action.detailFetcher) {
+      setResultJson({ error: "No details endpoint configured for this resource." });
+      return;
+    }
+
+    setDetailControl((previous) => ({ ...previous, loading: true }));
     try {
-      const payload = await fetchOrganizationSpaceDetails(token, selectedOrg, selectedSpace);
+      const payload = await action.detailFetcher(token, selectedOrg, detailControl.selectedItem);
       setResultJson(payload);
     } catch (error) {
       setResultJson({ error: error.message });
     } finally {
-      setLoadingSpaceDetails(false);
+      setDetailControl((previous) => ({ ...previous, loading: false }));
     }
   };
 
@@ -165,43 +224,113 @@ function App() {
       id: "instances",
       label: "Load Instances",
       loadingLabel: "Loading instances...",
-      onClick: () => loadOrgResource("instances", fetchOrganizationInstances),
+      detailLabel: "Instance",
+      detailButtonLabel: "Load Instance Details",
+      listFetcher: fetchOrganizationInstances,
+      detailFetcher: fetchOrganizationInstanceDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "instances",
+          listFetcher: fetchOrganizationInstances,
+          detailLabel: "Instance",
+          detailButtonLabel: "Load Instance Details",
+        }),
     },
     {
       id: "apis",
       label: "Load APIs",
       loadingLabel: "Loading APIs...",
-      onClick: () => loadOrgResource("apis", fetchOrganizationApis),
+      detailLabel: "API",
+      detailButtonLabel: "Load API Details",
+      listFetcher: fetchOrganizationApis,
+      detailFetcher: fetchOrganizationApiDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "apis",
+          listFetcher: fetchOrganizationApis,
+          detailLabel: "API",
+          detailButtonLabel: "Load API Details",
+        }),
     },
     {
       id: "spaces",
       label: "Load Spaces",
       loadingLabel: "Loading spaces...",
-      onClick: handleLoadSpaces,
+      detailLabel: "Space",
+      detailButtonLabel: "Load Space Details",
+      listFetcher: fetchOrganizationSpaces,
+      detailFetcher: fetchOrganizationSpaceDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "spaces",
+          listFetcher: fetchOrganizationSpaces,
+          detailLabel: "Space",
+          detailButtonLabel: "Load Space Details",
+        }),
     },
     {
       id: "environments",
       label: "Load Environments",
       loadingLabel: "Loading environments...",
-      onClick: () => loadOrgResource("environments", fetchOrganizationEnvironments),
+      detailLabel: "Environment",
+      detailButtonLabel: "Load Environment Details",
+      listFetcher: fetchOrganizationEnvironments,
+      detailFetcher: fetchOrganizationEnvironmentDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "environments",
+          listFetcher: fetchOrganizationEnvironments,
+          detailLabel: "Environment",
+          detailButtonLabel: "Load Environment Details",
+        }),
     },
     {
       id: "developers",
       label: "Load Developers",
       loadingLabel: "Loading developers...",
-      onClick: () => loadOrgResource("developers", fetchOrganizationDevelopers),
+      detailLabel: "Developer",
+      detailButtonLabel: "Load Developer Details",
+      listFetcher: fetchOrganizationDevelopers,
+      detailFetcher: fetchOrganizationDeveloperDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "developers",
+          listFetcher: fetchOrganizationDevelopers,
+          detailLabel: "Developer",
+          detailButtonLabel: "Load Developer Details",
+        }),
     },
     {
       id: "apps",
       label: "Load Apps",
       loadingLabel: "Loading apps...",
-      onClick: () => loadOrgResource("apps", fetchOrganizationApps),
+      detailLabel: "App",
+      detailButtonLabel: "Load App Details",
+      listFetcher: fetchOrganizationApps,
+      detailFetcher: fetchOrganizationAppDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "apps",
+          listFetcher: fetchOrganizationApps,
+          detailLabel: "App",
+          detailButtonLabel: "Load App Details",
+        }),
     },
     {
       id: "sharedflows",
       label: "Load Shared Flows",
       loadingLabel: "Loading shared flows...",
-      onClick: () => loadOrgResource("sharedflows", fetchOrganizationSharedflows),
+      detailLabel: "Shared Flow",
+      detailButtonLabel: "Load Shared Flow Details",
+      listFetcher: fetchOrganizationSharedflows,
+      detailFetcher: fetchOrganizationSharedflowDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "sharedflows",
+          listFetcher: fetchOrganizationSharedflows,
+          detailLabel: "Shared Flow",
+          detailButtonLabel: "Load Shared Flow Details",
+        }),
     },
   ];
 
@@ -230,12 +359,11 @@ function App() {
               onOrgChange={handleOrgChange}
               actions={orgActions}
               activeAction={activeAction}
-              spaces={spaces}
-              selectedSpace={selectedSpace}
-              onSpaceChange={setSelectedSpace}
-              showSpaceDetailsControl={showSpaceDetailsControl}
-              onLoadSpaceDetails={handleLoadSpaceDetails}
-              loadingSpaceDetails={loadingSpaceDetails}
+              detailControl={detailControl}
+              onDetailItemChange={(value) =>
+                setDetailControl((previous) => ({ ...previous, selectedItem: value }))
+              }
+              onLoadResourceDetails={handleLoadResourceDetails}
             />
           </section>
 

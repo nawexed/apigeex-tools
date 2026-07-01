@@ -176,6 +176,30 @@ def get_org_instances(org_name: str):
     return jsonify(payload)
 
 
+@apigee_bp.get("/orgs/<org_name>/instances/<instance_name>")
+def get_org_instance_details(org_name: str, instance_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_instance(org_name, instance_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get instance '{instance_name}' for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
 @apigee_bp.get("/orgs/<org_name>/apis")
 def get_org_apis(org_name: str):
     token = _extract_token()
@@ -188,6 +212,30 @@ def get_org_apis(org_name: str):
     if not response.ok:
         return jsonify({
             "error": f"Failed to get apis for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/apis/<api_name>")
+def get_org_api_details(org_name: str, api_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_api(org_name, api_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get api '{api_name}' for organization '{org_name}'",
             "status": response.status_code,
             "details": response.text,
         }), response.status_code
@@ -272,6 +320,30 @@ def get_org_environments(org_name: str):
     return jsonify(payload)
 
 
+@apigee_bp.get("/orgs/<org_name>/environments/<env_name>")
+def get_org_environment_details(org_name: str, env_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_environment(org_name, env_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get environment '{env_name}' for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
 @apigee_bp.get("/orgs/<org_name>/developers")
 def get_org_developers(org_name: str):
     token = _extract_token()
@@ -284,6 +356,30 @@ def get_org_developers(org_name: str):
     if not response.ok:
         return jsonify({
             "error": f"Failed to get developers for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/developers/<developer_id>")
+def get_org_developer_details(org_name: str, developer_id: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_developer(org_name, developer_id)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get developer '{developer_id}' for organization '{org_name}'",
             "status": response.status_code,
             "details": response.text,
         }), response.status_code
@@ -320,6 +416,30 @@ def get_org_apps(org_name: str):
     return jsonify(payload)
 
 
+@apigee_bp.get("/orgs/<org_name>/apps/<app_name>")
+def get_org_app_details(org_name: str, app_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_app(org_name, app_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get app '{app_name}' for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
 @apigee_bp.get("/orgs/<org_name>/sharedflows")
 def get_org_sharedflows(org_name: str):
     token = _extract_token()
@@ -332,6 +452,30 @@ def get_org_sharedflows(org_name: str):
     if not response.ok:
         return jsonify({
             "error": f"Failed to get sharedflows for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/sharedflows/<sharedflow_name>")
+def get_org_sharedflow_details(org_name: str, sharedflow_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_sharedflow(org_name, sharedflow_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get sharedflow '{sharedflow_name}' for organization '{org_name}'",
             "status": response.status_code,
             "details": response.text,
         }), response.status_code

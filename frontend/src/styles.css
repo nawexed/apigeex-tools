@@ -49,6 +49,12 @@ body {
   align-items: center;
 }
 
+.token-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .auth-control input {
   min-width: 260px;
   padding: 0.55rem 0.7rem;
@@ -62,6 +68,29 @@ body {
   color: rgba(255, 255, 255, 0.75);
 }
 
+.token-copy-btn {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.token-copy-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.token-copy-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .body-shell {
   display: grid;
   grid-template-columns: 230px 1fr;
@@ -72,6 +101,8 @@ body {
   border-right: 1px solid var(--line);
   background: linear-gradient(180deg, #fff7ed, #fffbeb);
   padding: 1rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .side-nav h3 {
@@ -95,6 +126,19 @@ body {
   background: #fed7aa;
   color: #7c2d12;
   font-weight: 700;
+}
+
+.side-nav-doc-link {
+  margin-top: auto;
+  color: #0f766e;
+  font-weight: 700;
+  text-decoration: none;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.side-nav-doc-link:hover {
+  text-decoration: underline;
 }
 
 .content-panel {
@@ -132,7 +176,7 @@ body {
   gap: 0.5rem;
 }
 
-.space-details-control {
+.resource-details-control {
   margin-top: 0.5rem;
   margin-left: 0.5rem;
   display: grid;
@@ -168,6 +212,10 @@ body {
     width: 100%;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .token-input-wrap {
+    width: 100%;
   }
 
   .auth-control input {

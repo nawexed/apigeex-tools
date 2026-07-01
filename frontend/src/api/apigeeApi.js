@@ -59,8 +59,19 @@ export async function fetchOrganizationInstances(token, orgName) {
   return apiGet(`/orgs/${encodeURIComponent(orgName)}/instances`, token);
 }
 
+export async function fetchOrganizationInstanceDetails(token, orgName, instanceName) {
+  return apiGet(
+    `/orgs/${encodeURIComponent(orgName)}/instances/${encodeURIComponent(instanceName)}`,
+    token
+  );
+}
+
 export async function fetchOrganizationApis(token, orgName) {
   return apiGet(`/orgs/${encodeURIComponent(orgName)}/apis`, token);
+}
+
+export async function fetchOrganizationApiDetails(token, orgName, apiName) {
+  return apiGet(`/orgs/${encodeURIComponent(orgName)}/apis/${encodeURIComponent(apiName)}`, token);
 }
 
 export async function fetchOrganizationSpaces(token, orgName) {
@@ -78,16 +89,41 @@ export async function fetchOrganizationEnvironments(token, orgName) {
   return apiGet(`/orgs/${encodeURIComponent(orgName)}/environments`, token);
 }
 
+export async function fetchOrganizationEnvironmentDetails(token, orgName, environmentName) {
+  return apiGet(
+    `/orgs/${encodeURIComponent(orgName)}/environments/${encodeURIComponent(environmentName)}`,
+    token
+  );
+}
+
 export async function fetchOrganizationDevelopers(token, orgName) {
   return apiGet(`/orgs/${encodeURIComponent(orgName)}/developers`, token);
+}
+
+export async function fetchOrganizationDeveloperDetails(token, orgName, developerId) {
+  return apiGet(
+    `/orgs/${encodeURIComponent(orgName)}/developers/${encodeURIComponent(developerId)}`,
+    token
+  );
 }
 
 export async function fetchOrganizationApps(token, orgName) {
   return apiGet(`/orgs/${encodeURIComponent(orgName)}/apps`, token);
 }
 
+export async function fetchOrganizationAppDetails(token, orgName, appName) {
+  return apiGet(`/orgs/${encodeURIComponent(orgName)}/apps/${encodeURIComponent(appName)}`, token);
+}
+
 export async function fetchOrganizationSharedflows(token, orgName) {
   return apiGet(`/orgs/${encodeURIComponent(orgName)}/sharedflows`, token);
+}
+
+export async function fetchOrganizationSharedflowDetails(token, orgName, sharedflowName) {
+  return apiGet(
+    `/orgs/${encodeURIComponent(orgName)}/sharedflows/${encodeURIComponent(sharedflowName)}`,
+    token
+  );
 }
 
 export async function fetchAndSaveTokenFromBackend() {
