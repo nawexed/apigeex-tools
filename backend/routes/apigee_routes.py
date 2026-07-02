@@ -152,6 +152,30 @@ def get_org(org_name: str):
     return jsonify(payload)
 
 
+@apigee_bp.get("/orgs/<org_name>/project-mapping")
+def get_org_project_mapping(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_project_mapping(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get project mapping for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
 @apigee_bp.get("/orgs/<org_name>/instances")
 def get_org_instances(org_name: str):
     token = _extract_token()

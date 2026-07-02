@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  buildGcpRequestUrl,
   fetchAndSaveTokenFromBackend,
   fetchOrganizationApiDetails,
   fetchOrganizationApis,
@@ -12,13 +13,16 @@ import {
   fetchOrganizationEnvironments,
   fetchOrganizationInstanceDetails,
   fetchOrganizationInstances,
+  fetchOrganizationProjectMapping,
   fetchOrganizationSpaceDetails,
   fetchOrganizationSharedflowDetails,
   fetchOrganizationSharedflows,
   fetchOrganizationSpaces,
   fetchOrganizations,
+  getLastGcpRequestPath,
 } from "./api/apigeeApi";
 import AuthTokenControl from "./components/AuthTokenControl";
+import EndpointModeControl from "./components/EndpointModeControl";
 import JsonViewer from "./components/JsonViewer";
 import OrgSelector from "./components/OrgSelector";
 import SideNav from "./components/SideNav";
@@ -97,20 +101,29 @@ function extractResourceNames(payload, resourceId) {
 
 function App() {
   const [token, setToken] = useState(getStoredToken());
+  const [endpointMode, setEndpointMode] = useState("global");
+  const [region, setRegion] = useState("us-east1");
   const [orgs, setOrgs] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState("");
   const [resultJson, setResultJson] = useState({ message: "Loading organizations from config..." });
+  const [requestPath, setRequestPath] = useState("");
+  const [requestUrl, setRequestUrl] = useState("");
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [activeAction, setActiveAction] = useState("");
   const [detailControl, setDetailControl] = useState(EMPTY_DETAIL_CONTROL);
   const [loadingToken, setLoadingToken] = useState(false);
 
   const tokenReady = useMemo(() => token && token.trim().length > 0, [token]);
+  const endpointConfig = useMemo(
+    () => ({ endpointMode, region: region.trim() }),
+    [endpointMode, region]
+  );
 
   const handleLoadOrganizations = async () => {
     setLoadingOrgs(true);
     try {
       const orgList = await fetchOrganizations(token);
+      updateDisplayedGcpRequestUrl();
       setOrgs(orgList);
       setSelectedOrg(orgList[0] || "");
       setResultJson({ organizations: orgList });
@@ -126,14 +139,29 @@ function App() {
     setDetailControl(EMPTY_DETAIL_CONTROL);
   };
 
+  const updateDisplayedGcpRequestUrl = () => {
+    const latestPath = getLastGcpRequestPath();
+    setRequestPath(latestPath);
+    setRequestUrl(buildGcpRequestUrl(latestPath, endpointConfig));
+  };
+
   useEffect(() => {
     handleLoadOrganizations();
   }, []);
+
+  useEffect(() => {
+    if (!requestPath) {
+      setRequestUrl("");
+      return;
+    }
+    setRequestUrl(buildGcpRequestUrl(requestPath, endpointConfig));
+  }, [requestPath, endpointMode, region]);
 
   const handleFetchTokenFromBackend = async () => {
     setLoadingToken(true);
     try {
       const backendToken = await fetchAndSaveTokenFromBackend();
+      updateDisplayedGcpRequestUrl();
       saveToken(backendToken);
       setToken(backendToken);
       setResultJson({ message: "Token retrieved from backend and saved.", tokenSource: "gcloud" });
@@ -152,7 +180,8 @@ function App() {
 
     setActiveAction(actionId);
     try {
-      const payload = await fetcher(token, selectedOrg);
+      const payload = await fetcher(token, selectedOrg, endpointConfig);
+      updateDisplayedGcpRequestUrl();
       setResultJson(payload);
       setDetailControl(EMPTY_DETAIL_CONTROL);
     } catch (error) {
@@ -170,7 +199,8 @@ function App() {
 
     setActiveAction(action.id);
     try {
-      const payload = await action.listFetcher(token, selectedOrg);
+      const payload = await action.listFetcher(token, selectedOrg, endpointConfig);
+      updateDisplayedGcpRequestUrl();
       const names = extractResourceNames(payload, action.id);
       setDetailControl({
         resourceId: action.id,
@@ -204,7 +234,13 @@ function App() {
 
     setDetailControl((previous) => ({ ...previous, loading: true }));
     try {
-      const payload = await action.detailFetcher(token, selectedOrg, detailControl.selectedItem);
+      const payload = await action.detailFetcher(
+        token,
+        selectedOrg,
+        detailControl.selectedItem,
+        endpointConfig
+      );
+      updateDisplayedGcpRequestUrl();
       setResultJson(payload);
     } catch (error) {
       setResultJson({ error: error.message });
@@ -219,6 +255,12 @@ function App() {
       label: "Load Selected Organization",
       loadingLabel: "Loading organization...",
       onClick: () => loadOrgResource("orgDetails", fetchOrganizationDetails),
+    },
+    {
+      id: "projectMapping",
+      label: "Load Project Mapping",
+      loadingLabel: "Loading project mapping...",
+      onClick: () => loadOrgResource("projectMapping", fetchOrganizationProjectMapping),
     },
     {
       id: "instances",
@@ -337,12 +379,20 @@ function App() {
   return (
     <div className="app-shell">
       <TopBar>
-        <AuthTokenControl
-          token={token}
-          onTokenSaved={setToken}
-          onFetchToken={handleFetchTokenFromBackend}
-          loadingToken={loadingToken}
-        />
+        <div className="top-controls">
+          <EndpointModeControl
+            endpointMode={endpointMode}
+            region={region}
+            onModeChange={setEndpointMode}
+            onRegionChange={setRegion}
+          />
+          <AuthTokenControl
+            token={token}
+            onTokenSaved={setToken}
+            onFetchToken={handleFetchTokenFromBackend}
+            loadingToken={loadingToken}
+          />
+        </div>
       </TopBar>
 
       <div className="body-shell">
@@ -369,6 +419,11 @@ function App() {
 
           <section className="json-panel">
             <h2>API Response</h2>
+            {requestUrl ? (
+              <p className="request-url">
+                <strong>GCP Request URL:</strong> {requestUrl}
+              </p>
+            ) : null}
             <JsonViewer data={resultJson} />
           </section>
         </main>
