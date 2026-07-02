@@ -42,6 +42,28 @@ npm run dev
 
 Frontend runs on `http://localhost:5173`.
 
+## Docker Setup
+
+The container uses an arm64-safe Python base image and installs `gcloud` inside the image via the official Google Cloud SDK installer so it can build on Apple Silicon and similar arm64 hosts.
+
+Build the single-container image:
+
+```bash
+docker build -t apigeex-tools .
+```
+
+Run the container:
+
+```bash
+docker run --rm -p 5000:5000 \
+	-v ~/.config/gcloud:/root/.config/gcloud \
+	apigeex-tools
+```
+
+The `gcloud` config mount is required if you want the `Get Token (gcloud)` button to work inside the container.
+
+Open `http://localhost:5000` to use the app. The frontend and backend are served from the same container and the frontend uses `/api` for backend calls.
+
 ## How To Use
 
 1. Open the frontend in browser.

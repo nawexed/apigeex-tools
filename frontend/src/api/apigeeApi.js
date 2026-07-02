@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:5001/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
 const GCP_API_BASE = "https://apigee.googleapis.com/v1";
 let lastRequestUrl = "";
 let lastGcpRequestUrl = "";
