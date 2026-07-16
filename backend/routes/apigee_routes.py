@@ -4,6 +4,7 @@ from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
+from services.apigee_configs import ApigeeConfigs
 from services.apigee_client import ApigeeClient
 
 apigee_bp = Blueprint("apigee", __name__, url_prefix="/api")
@@ -149,6 +150,14 @@ def get_org(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_organization_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save organization config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -173,6 +182,14 @@ def get_org_project_mapping(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_project_mapping_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save project mapping config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -196,6 +213,14 @@ def get_org_instances(org_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_instances_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save instances config for '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -245,6 +270,14 @@ def get_org_apis(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_proxies_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save proxies config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -268,6 +301,78 @@ def get_org_api_details(org_name: str, api_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_proxy_detail_config(org_name, api_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save api detail config for '{api_name}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/apiproducts")
+def get_org_api_products(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_api_products(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get api products for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_api_products_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save api products config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/apiproducts/<product_name>")
+def get_org_api_product_details(org_name: str, product_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_api_product(org_name, product_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get api product '{product_name}' for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_api_product_detail_config(org_name, product_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save api product detail config for '{product_name}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -293,6 +398,14 @@ def get_org_spaces(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_spaces_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save spaces config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -316,6 +429,14 @@ def get_org_space_details(org_name: str, space_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_space_detail_config(org_name, space_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save space detail config for '{space_name}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -341,6 +462,14 @@ def get_org_environments(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_environments_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save environments config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -364,6 +493,14 @@ def get_org_environment_details(org_name: str, env_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_environment_detail_config(org_name, env_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save environment detail config for '{env_name}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -389,6 +526,14 @@ def get_org_developers(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_developers_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save developers config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -412,6 +557,14 @@ def get_org_developer_details(org_name: str, developer_id: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_developer_detail_config(org_name, developer_id, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save developer detail config for '{developer_id}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -437,6 +590,14 @@ def get_org_apps(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_apps_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save apps config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -460,6 +621,14 @@ def get_org_app_details(org_name: str, app_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_app_detail_config(org_name, app_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save app detail config for '{app_name}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -485,6 +654,14 @@ def get_org_sharedflows(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_sharedflows_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save shared flows config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -508,5 +685,13 @@ def get_org_sharedflow_details(org_name: str, sharedflow_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_sharedflow_detail_config(org_name, sharedflow_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save shared flow detail config for '{sharedflow_name}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)

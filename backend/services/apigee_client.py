@@ -1,5 +1,9 @@
+import logging
 import requests
 from flask import has_request_context, request
+
+
+logger = logging.getLogger(__name__)
 
 
 class ApigeeClient:
@@ -39,70 +43,82 @@ class ApigeeClient:
             "Accept": "application/json",
         }
 
+    def _get(self, method_name: str, url: str) -> requests.Response:
+        logger.info("Apigee request URL [%s]: %s", method_name, url)
+        return requests.get(url, headers=self._headers(), timeout=30)
+
     def list_organizations(self) -> requests.Response:
         url = f"{self.base_url}/organizations"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("list_organizations", url)
 
     def get_organization(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("get_organization", url)
 
     def get_project_mapping(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}:getProjectMapping"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("get_project_mapping", url)
 
     def list_instances(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/instances"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("list_instances", url)
 
     def get_instance(self, org_name: str, instance_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/instances/{instance_name}"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("get_instance", url)
 
     def list_apis(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/apis"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("list_apis", url)
 
     def get_api(self, org_name: str, api_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/apis/{api_name}"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("get_api", url)
+
+    def list_api_products(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/apiproducts"
+        return self._get("list_api_products", url)
+
+    def get_api_product(self, org_name: str, product_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/apiproducts/{product_name}"
+        return self._get("get_api_product", url)
 
     def list_spaces(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/spaces"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("list_spaces", url)
 
     def get_space(self, org_name: str, space_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/spaces/{space_name}"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("get_space", url)
 
     def list_environments(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/environments"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("list_environments", url)
 
     def get_environment(self, org_name: str, env_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/environments/{env_name}"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("get_environment", url)
 
     def list_developers(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/developers"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("list_developers", url)
 
     def get_developer(self, org_name: str, developer_id: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/developers/{developer_id}"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("get_developer", url)
 
     def list_apps(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/apps"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("list_apps", url)
 
     def get_app(self, org_name: str, app_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/apps/{app_name}"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("get_app", url)
 
     def list_sharedflows(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/sharedflows"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("list_sharedflows", url)
 
     def get_sharedflow(self, org_name: str, sharedflow_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/sharedflows/{sharedflow_name}"
-        return requests.get(url, headers=self._headers(), timeout=30)
+        return self._get("get_sharedflow", url)

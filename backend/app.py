@@ -1,13 +1,17 @@
 import os
+import logging
 from pathlib import Path
 
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
 from routes.apigee_routes import apigee_bp
+
+# logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 
 
 def create_app() -> Flask:
@@ -45,6 +49,6 @@ if __name__ == "__main__":
     flask_app = create_app()
     flask_app.run(
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", "5000")),
+        port=int(os.environ.get("PORT", "5001")),
         debug=os.environ.get("FLASK_DEBUG", "1") == "1",
     )

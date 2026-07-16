@@ -3,6 +3,8 @@ import {
   buildGcpRequestUrl,
   fetchAndSaveTokenFromBackend,
   fetchOrganizationApiDetails,
+  fetchOrganizationApiProductDetails,
+  fetchOrganizationApiProducts,
   fetchOrganizationApis,
   fetchOrganizationAppDetails,
   fetchOrganizationApps,
@@ -32,6 +34,7 @@ import { getStoredToken, saveToken } from "./utils/tokenStore";
 const RESOURCE_ARRAY_KEYS = {
   instances: ["instances"],
   apis: ["apis", "proxies"],
+  apiProducts: ["apiProduct", "apiProducts"],
   spaces: ["spaces", "spaceNames"],
   environments: ["environments"],
   developers: ["developers", "developer"],
@@ -102,7 +105,7 @@ function extractResourceNames(payload, resourceId) {
 function App() {
   const [token, setToken] = useState(getStoredToken());
   const [endpointMode, setEndpointMode] = useState("global");
-  const [region, setRegion] = useState("us-east1");
+  const [region, setRegion] = useState("us");
   const [orgs, setOrgs] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState("");
   const [resultJson, setResultJson] = useState({ message: "Loading organizations from config..." });
@@ -292,6 +295,22 @@ function App() {
           listFetcher: fetchOrganizationApis,
           detailLabel: "API",
           detailButtonLabel: "Load API Details",
+        }),
+    },
+    {
+      id: "apiProducts",
+      label: "Load API Products",
+      loadingLabel: "Loading API Products...",
+      detailLabel: "API Product",
+      detailButtonLabel: "Load API Product Details",
+      listFetcher: fetchOrganizationApiProducts,
+      detailFetcher: fetchOrganizationApiProductDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "apiProducts",
+          listFetcher: fetchOrganizationApiProducts,
+          detailLabel: "API Product",
+          detailButtonLabel: "Load API Product Details",
         }),
     },
     {

@@ -146,6 +146,32 @@ export async function fetchOrganizationApiDetails(token, orgName, apiName, endpo
   );
 }
 
+export async function fetchOrganizationApiProducts(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/apiproducts`,
+    token,
+    `/organizations/${encodedOrg}/apiproducts`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationApiProductDetails(
+  token,
+  orgName,
+  productName,
+  endpointConfig = {}
+) {
+  const encodedOrg = encodeURIComponent(orgName);
+  const encodedProduct = encodeURIComponent(productName);
+  return apiGet(
+    `/orgs/${encodedOrg}/apiproducts/${encodedProduct}`,
+    token,
+    `/organizations/${encodedOrg}/apiproducts/${encodedProduct}`,
+    endpointConfig
+  );
+}
+
 export async function fetchOrganizationSpaces(token, orgName, endpointConfig = {}) {
   const encodedOrg = encodeURIComponent(orgName);
   return apiGet(`/orgs/${encodedOrg}/spaces`, token, `/organizations/${encodedOrg}/spaces`, endpointConfig);
