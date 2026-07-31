@@ -23,9 +23,11 @@ This project is a modular Python + React web application.
 ## Backend Setup (Flask)
 
 ```bash
-cd backend
 python3 -m venv .venv
-source .venv/bin/activate
+source ./.venv/bin/activate
+cd backend
+#python3 -m venv .venv
+#source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
 ```
@@ -36,7 +38,8 @@ Backend runs on `http://localhost:5001`.
 
 ```bash
 cd frontend
-npm install
+brew install node
+npm install --legacy-peer-deps
 npm run dev
 ```
 

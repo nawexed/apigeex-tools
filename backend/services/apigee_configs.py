@@ -55,6 +55,66 @@ class ApigeeConfigs:
             "sharedFlows": existing.get("sharedFlows", {}),
         }
 
+    @staticmethod
+    def _normalize_identity(value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            return ""
+        parts = normalized.split("/")
+        return parts[-1]
+
+    @classmethod
+    def _item_identity(cls, item: Any, candidate_keys: list[str]) -> str | None:
+        if isinstance(item, str):
+            identity = cls._normalize_identity(item)
+            return identity or None
+
+        if isinstance(item, dict):
+            for key in candidate_keys:
+                raw_value = item.get(key)
+                if isinstance(raw_value, str):
+                    identity = cls._normalize_identity(raw_value)
+                    if identity:
+                        return identity
+
+        return None
+
+    @staticmethod
+    def _extract_list_payload(payload: Any, payload_keys: list[str]) -> list[Any] | None:
+        if isinstance(payload, list):
+            return payload
+
+        if isinstance(payload, dict):
+            for key in payload_keys:
+                value = payload.get(key)
+                if isinstance(value, list):
+                    return value
+
+        return None
+
+    @classmethod
+    def _merge_list_items(
+        cls,
+        existing_items: list[Any],
+        incoming_items: list[Any],
+        candidate_keys: list[str],
+    ) -> list[Any]:
+        existing_by_identity: dict[str, Any] = {}
+        for item in existing_items:
+            identity = cls._item_identity(item, candidate_keys)
+            if identity and identity not in existing_by_identity:
+                existing_by_identity[identity] = item
+
+        merged: list[Any] = []
+        for item in incoming_items:
+            identity = cls._item_identity(item, candidate_keys)
+            if identity and identity in existing_by_identity:
+                merged.append(existing_by_identity[identity])
+            else:
+                merged.append(item)
+
+        return merged
+
     @classmethod
     def save_organization_config(cls, org_name: str, payload: Any) -> Path:
         """Save organization payload to data/orgs/<org-name>/<org-name>.json."""
@@ -95,10 +155,18 @@ class ApigeeConfigs:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         formatted_payload = cls._base_document(org_name)
-        if isinstance(payload, dict) and isinstance(payload.get("instances"), list):
-            formatted_payload["instances"] = payload["instances"]
-        else:
+        incoming_items = cls._extract_list_payload(payload, ["instances"])
+        if incoming_items is None:
             formatted_payload["instances"] = payload
+        else:
+            existing_items = (
+                formatted_payload["instances"] if isinstance(formatted_payload.get("instances"), list) else []
+            )
+            formatted_payload["instances"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["name", "instance", "instanceId", "id"],
+            )
 
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path
@@ -113,10 +181,20 @@ class ApigeeConfigs:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         formatted_payload = cls._base_document(org_name)
-        if isinstance(payload, dict) and isinstance(payload.get("environments"), list):
-            formatted_payload["environments"] = payload["environments"]
-        else:
+        incoming_items = cls._extract_list_payload(payload, ["environments"])
+        if incoming_items is None:
             formatted_payload["environments"] = payload
+        else:
+            existing_items = (
+                formatted_payload["environments"]
+                if isinstance(formatted_payload.get("environments"), list)
+                else []
+            )
+            formatted_payload["environments"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["name", "environment", "id"],
+            )
 
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path
@@ -176,10 +254,18 @@ class ApigeeConfigs:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         formatted_payload = cls._base_document(org_name)
-        if isinstance(payload, dict) and isinstance(payload.get("proxies"), list):
-            formatted_payload["proxies"] = payload["proxies"]
-        else:
+        incoming_items = cls._extract_list_payload(payload, ["proxies", "apis"])
+        if incoming_items is None:
             formatted_payload["proxies"] = payload
+        else:
+            existing_items = (
+                formatted_payload["proxies"] if isinstance(formatted_payload.get("proxies"), list) else []
+            )
+            formatted_payload["proxies"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["name", "apiProxy", "id"],
+            )
 
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path
@@ -237,12 +323,20 @@ class ApigeeConfigs:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         formatted_payload = cls._base_document(org_name)
-        if isinstance(payload, dict) and isinstance(payload.get("apiProduct"), list):
-            formatted_payload["apiProducts"] = payload["apiProduct"]
-        elif isinstance(payload, dict) and isinstance(payload.get("apiProducts"), list):
-            formatted_payload["apiProducts"] = payload["apiProducts"]
-        else:
+        incoming_items = cls._extract_list_payload(payload, ["apiProduct", "apiProducts"])
+        if incoming_items is None:
             formatted_payload["apiProducts"] = payload
+        else:
+            existing_items = (
+                formatted_payload["apiProducts"]
+                if isinstance(formatted_payload.get("apiProducts"), list)
+                else []
+            )
+            formatted_payload["apiProducts"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["name", "apiProduct", "id"],
+            )
 
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path
@@ -302,10 +396,18 @@ class ApigeeConfigs:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         formatted_payload = cls._base_document(org_name)
-        if isinstance(payload, dict) and isinstance(payload.get("spaces"), list):
-            formatted_payload["spaces"] = payload["spaces"]
-        else:
+        incoming_items = cls._extract_list_payload(payload, ["spaces", "spaceNames"])
+        if incoming_items is None:
             formatted_payload["spaces"] = payload
+        else:
+            existing_items = (
+                formatted_payload["spaces"] if isinstance(formatted_payload.get("spaces"), list) else []
+            )
+            formatted_payload["spaces"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["name", "space", "id"],
+            )
 
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path
@@ -363,12 +465,20 @@ class ApigeeConfigs:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         formatted_payload = cls._base_document(org_name)
-        if isinstance(payload, dict) and isinstance(payload.get("developers"), list):
-            formatted_payload["developers"] = payload["developers"]
-        elif isinstance(payload, dict) and isinstance(payload.get("developer"), list):
-            formatted_payload["developers"] = payload["developer"]
-        else:
+        incoming_items = cls._extract_list_payload(payload, ["developers", "developer"])
+        if incoming_items is None:
             formatted_payload["developers"] = payload
+        else:
+            existing_items = (
+                formatted_payload["developers"]
+                if isinstance(formatted_payload.get("developers"), list)
+                else []
+            )
+            formatted_payload["developers"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["developerId", "developer_id", "email", "name", "id"],
+            )
 
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path
@@ -433,12 +543,18 @@ class ApigeeConfigs:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         formatted_payload = cls._base_document(org_name)
-        if isinstance(payload, dict) and isinstance(payload.get("app"), list):
-            formatted_payload["apps"] = payload["app"]
-        elif isinstance(payload, dict) and isinstance(payload.get("apps"), list):
-            formatted_payload["apps"] = payload["apps"]
-        else:
+        incoming_items = cls._extract_list_payload(payload, ["app", "apps"])
+        if incoming_items is None:
             formatted_payload["apps"] = payload
+        else:
+            existing_items = (
+                formatted_payload["apps"] if isinstance(formatted_payload.get("apps"), list) else []
+            )
+            formatted_payload["apps"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["name", "appId", "app_id", "id"],
+            )
 
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path
@@ -498,12 +614,20 @@ class ApigeeConfigs:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         formatted_payload = cls._base_document(org_name)
-        if isinstance(payload, dict) and isinstance(payload.get("sharedFlows"), list):
-            formatted_payload["sharedFlows"] = payload["sharedFlows"]
-        elif isinstance(payload, dict) and isinstance(payload.get("sharedflows"), list):
-            formatted_payload["sharedFlows"] = payload["sharedflows"]
-        else:
+        incoming_items = cls._extract_list_payload(payload, ["sharedFlows", "sharedflows"])
+        if incoming_items is None:
             formatted_payload["sharedFlows"] = payload
+        else:
+            existing_items = (
+                formatted_payload["sharedFlows"]
+                if isinstance(formatted_payload.get("sharedFlows"), list)
+                else []
+            )
+            formatted_payload["sharedFlows"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["name", "sharedFlowId", "id"],
+            )
 
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path
