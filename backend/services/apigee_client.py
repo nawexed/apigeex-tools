@@ -75,6 +75,10 @@ class ApigeeClient:
         url = f"{self.base_url}/organizations/{org_name}/apis/{api_name}"
         return self._get("get_api", url)
 
+    def list_api_deployments(self, org_name: str, api_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/apis/{api_name}/deployments"
+        return self._get("list_api_deployments", url)
+
     def list_api_products(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/apiproducts"
         return self._get("list_api_products", url)

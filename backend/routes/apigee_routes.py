@@ -313,6 +313,30 @@ def get_org_api_details(org_name: str, api_name: str):
     return jsonify(payload)
 
 
+@apigee_bp.get("/orgs/<org_name>/apis/<api_name>/deployments")
+def get_org_api_deployments(org_name: str, api_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_api_deployments(org_name, api_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get deployments for api '{api_name}' in organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
 @apigee_bp.get("/orgs/<org_name>/apiproducts")
 def get_org_api_products(org_name: str):
     token = _extract_token()

@@ -135,15 +135,34 @@ export async function fetchOrganizationApis(token, orgName, endpointConfig = {})
   return apiGet(`/orgs/${encodedOrg}/apis`, token, `/organizations/${encodedOrg}/apis`, endpointConfig);
 }
 
-export async function fetchOrganizationApiDetails(token, orgName, apiName, endpointConfig = {}) {
+export async function fetchOrganizationApiDeployments(token, orgName, apiName, endpointConfig = {}) {
   const encodedOrg = encodeURIComponent(orgName);
   const encodedApi = encodeURIComponent(apiName);
   return apiGet(
-    `/orgs/${encodedOrg}/apis/${encodedApi}`,
+    `/orgs/${encodedOrg}/apis/${encodedApi}/deployments`,
     token,
-    `/organizations/${encodedOrg}/apis/${encodedApi}`,
+    `/organizations/${encodedOrg}/apis/${encodedApi}/deployments`,
     endpointConfig
   );
+}
+
+export async function fetchOrganizationApiDetails(token, orgName, apiName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  const encodedApi = encodeURIComponent(apiName);
+  const [apiDetails, deployments] = await Promise.all([
+    apiGet(
+      `/orgs/${encodedOrg}/apis/${encodedApi}`,
+      token,
+      `/organizations/${encodedOrg}/apis/${encodedApi}`,
+      endpointConfig
+    ),
+    fetchOrganizationApiDeployments(token, orgName, apiName, endpointConfig),
+  ]);
+
+  return {
+    ...apiDetails,
+    deployments,
+  };
 }
 
 export async function fetchOrganizationApiProducts(token, orgName, endpointConfig = {}) {
