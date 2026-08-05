@@ -193,6 +193,198 @@ def get_org_project_mapping(org_name: str):
     return jsonify(payload)
 
 
+@apigee_bp.get("/orgs/<org_name>/endpoint-attachments")
+def get_org_endpoint_attachments(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_endpoint_attachments(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get endpoint attachments for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/deployments")
+def get_org_deployments(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_deployments(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get deployments for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/datacollectors")
+def get_org_data_collectors(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_data_collectors(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get data collectors for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/envgroups")
+def get_org_env_groups(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_env_groups(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get env groups for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/approups")
+def get_org_app_groups(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_app_groups(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get app groups for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/hostQueries")
+def get_org_host_queries(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_host_queries(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get host queries for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/hostSecurityReports")
+def get_org_host_security_reports(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_host_security_reports(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get host security reports for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/hostStats")
+def get_org_host_stats(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_host_stats(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get host stats for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
 @apigee_bp.get("/orgs/<org_name>/instances")
 def get_org_instances(org_name: str):
     token = _extract_token()

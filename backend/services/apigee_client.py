@@ -59,6 +59,38 @@ class ApigeeClient:
         url = f"{self.base_url}/organizations/{org_name}:getProjectMapping"
         return self._get("get_project_mapping", url)
 
+    def list_endpoint_attachments(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/endpointAttachments"
+        return self._get("list_endpoint_attachments", url)
+
+    def list_deployments(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/deployments"
+        return self._get("list_deployments", url)
+
+    def list_data_collectors(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/datacollectors"
+        return self._get("list_data_collectors", url)
+
+    def list_env_groups(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/envgroups"
+        return self._get("list_env_groups", url)
+
+    def list_app_groups(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/approups"
+        return self._get("list_app_groups", url)
+
+    def list_host_queries(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/hostQueries"
+        return self._get("list_host_queries", url)
+
+    def list_host_security_reports(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/hostSecurityReports"
+        return self._get("list_host_security_reports", url)
+
+    def list_host_stats(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/hostStats"
+        return self._get("list_host_stats", url)
+
     def list_instances(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/instances"
         return self._get("list_instances", url)

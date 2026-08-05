@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildGcpRequestUrl,
   fetchAndSaveTokenFromBackend,
@@ -11,7 +11,15 @@ import {
   fetchOrganizationDeveloperDetails,
   fetchOrganizationDevelopers,
   fetchOrganizationDetails,
+  fetchOrganizationDeployments,
+  fetchOrganizationDataCollectors,
+  fetchOrganizationEndpointAttachments,
   fetchOrganizationEnvironmentDetails,
+  fetchOrganizationEnvGroups,
+  fetchOrganizationAppGroups,
+  fetchOrganizationHostQueries,
+  fetchOrganizationHostSecurityReports,
+  fetchOrganizationHostStats,
   fetchOrganizationEnvironments,
   fetchOrganizationInstanceDetails,
   fetchOrganizationInstances,
@@ -102,6 +110,68 @@ function extractResourceNames(payload, resourceId) {
   return [];
 }
 
+function buildErrorResult(error) {
+  if (error?.responsePayload && typeof error.responsePayload === "object") {
+    return error.responsePayload;
+  }
+
+  if (error && typeof error === "object" && "error" in error) {
+    return error;
+  }
+
+  return { error: error?.message || "Unknown error" };
+}
+
+function buildPreviewGcpPath(actionId, orgName, resourceName = "") {
+  if (!orgName) {
+    return "";
+  }
+
+  const encodedOrg = encodeURIComponent(orgName);
+  const encodedName = resourceName ? encodeURIComponent(resourceName) : "";
+
+  switch (actionId) {
+    case "orgDetails":
+      return `/organizations/${encodedOrg}`;
+    case "projectMapping":
+      return `/organizations/${encodedOrg}:getProjectMapping`;
+    case "endpointAttachments":
+      return `/organizations/${encodedOrg}/endpointAttachments`;
+    case "deployments":
+      return `/organizations/${encodedOrg}/deployments`;
+    case "dataCollectors":
+      return `/organizations/${encodedOrg}/datacollectors`;
+    case "envGroups":
+      return `/organizations/${encodedOrg}/envgroups`;
+    case "appGroups":
+      return `/organizations/${encodedOrg}/approups`;
+    case "hostQueries":
+      return `/organizations/${encodedOrg}/hostQueries`;
+    case "hostSecurityReports":
+      return `/organizations/${encodedOrg}/hostSecurityReports`;
+    case "hostStats":
+      return `/organizations/${encodedOrg}/hostStats`;
+    case "instances":
+      return `/organizations/${encodedOrg}/instances${encodedName ? `/${encodedName}` : ""}`;
+    case "apis":
+      return `/organizations/${encodedOrg}/apis${encodedName ? `/${encodedName}` : ""}`;
+    case "apiProducts":
+      return `/organizations/${encodedOrg}/apiproducts${encodedName ? `/${encodedName}` : ""}`;
+    case "spaces":
+      return `/organizations/${encodedOrg}/spaces${encodedName ? `/${encodedName}` : ""}`;
+    case "environments":
+      return `/organizations/${encodedOrg}/environments${encodedName ? `/${encodedName}` : ""}`;
+    case "developers":
+      return `/organizations/${encodedOrg}/developers${encodedName ? `/${encodedName}` : ""}`;
+    case "apps":
+      return `/organizations/${encodedOrg}/apps${encodedName ? `/${encodedName}` : ""}`;
+    case "sharedflows":
+      return `/organizations/${encodedOrg}/sharedflows${encodedName ? `/${encodedName}` : ""}`;
+    default:
+      return "";
+  }
+}
+
 function App() {
   const [token, setToken] = useState(getStoredToken());
   const [endpointMode, setEndpointMode] = useState("global");
@@ -115,6 +185,7 @@ function App() {
   const [activeAction, setActiveAction] = useState("");
   const [detailControl, setDetailControl] = useState(EMPTY_DETAIL_CONTROL);
   const [loadingToken, setLoadingToken] = useState(false);
+  const requestPathRef = useRef("");
 
   const tokenReady = useMemo(() => token && token.trim().length > 0, [token]);
   const endpointConfig = useMemo(
@@ -131,7 +202,7 @@ function App() {
       setSelectedOrg(orgList[0] || "");
       setResultJson({ organizations: orgList });
     } catch (error) {
-      setResultJson({ error: error.message });
+      setResultJson(buildErrorResult(error));
     } finally {
       setLoadingOrgs(false);
     }
@@ -140,12 +211,23 @@ function App() {
   const handleOrgChange = (orgName) => {
     setSelectedOrg(orgName);
     setDetailControl(EMPTY_DETAIL_CONTROL);
+    requestPathRef.current = "";
+    setRequestPath("");
+    setRequestUrl("");
   };
 
-  const updateDisplayedGcpRequestUrl = () => {
-    const latestPath = getLastGcpRequestPath();
-    setRequestPath(latestPath);
-    setRequestUrl(buildGcpRequestUrl(latestPath, endpointConfig));
+  const updateDisplayedGcpRequestUrl = (overridePath = "") => {
+    const nextPath = overridePath || requestPathRef.current;
+    requestPathRef.current = nextPath;
+    setRequestPath(nextPath);
+    setRequestUrl(buildGcpRequestUrl(nextPath, endpointConfig));
+  };
+
+  const setPreviewForAction = (actionId, resourceName = "") => {
+    const previewPath = buildPreviewGcpPath(actionId, selectedOrg, resourceName);
+    requestPathRef.current = previewPath;
+    setRequestPath(previewPath);
+    setRequestUrl(buildGcpRequestUrl(previewPath, endpointConfig));
   };
 
   useEffect(() => {
@@ -157,8 +239,22 @@ function App() {
       setRequestUrl("");
       return;
     }
+    requestPathRef.current = requestPath;
     setRequestUrl(buildGcpRequestUrl(requestPath, endpointConfig));
   }, [requestPath, endpointMode, region]);
+
+  useEffect(() => {
+    if (!selectedOrg) {
+      requestPathRef.current = "";
+      setRequestUrl("");
+      setRequestPath("");
+      return;
+    }
+
+    if (!requestPath) {
+      setRequestUrl("");
+    }
+  }, [selectedOrg, endpointMode, region]);
 
   const handleFetchTokenFromBackend = async () => {
     setLoadingToken(true);
@@ -169,7 +265,7 @@ function App() {
       setToken(backendToken);
       setResultJson({ message: "Token retrieved from backend and saved.", tokenSource: "gcloud" });
     } catch (error) {
-      setResultJson({ error: error.message });
+      setResultJson(buildErrorResult(error));
     } finally {
       setLoadingToken(false);
     }
@@ -181,6 +277,7 @@ function App() {
       return;
     }
 
+    setPreviewForAction(actionId);
     setActiveAction(actionId);
     try {
       const payload = await fetcher(token, selectedOrg, endpointConfig);
@@ -188,7 +285,7 @@ function App() {
       setResultJson(payload);
       setDetailControl(EMPTY_DETAIL_CONTROL);
     } catch (error) {
-      setResultJson({ error: error.message });
+      setResultJson(buildErrorResult(error));
     } finally {
       setActiveAction("");
     }
@@ -200,6 +297,7 @@ function App() {
       return;
     }
 
+    setPreviewForAction(action.id);
     setActiveAction(action.id);
     try {
       const payload = await action.listFetcher(token, selectedOrg, endpointConfig);
@@ -216,7 +314,7 @@ function App() {
       });
       setResultJson(payload);
     } catch (error) {
-      setResultJson({ error: error.message });
+      setResultJson(buildErrorResult(error));
       setDetailControl(EMPTY_DETAIL_CONTROL);
     } finally {
       setActiveAction("");
@@ -235,6 +333,7 @@ function App() {
       return;
     }
 
+    setPreviewForAction(detailControl.resourceId, detailControl.selectedItem);
     setDetailControl((previous) => ({ ...previous, loading: true }));
     try {
       const payload = await action.detailFetcher(
@@ -246,7 +345,7 @@ function App() {
       updateDisplayedGcpRequestUrl();
       setResultJson(payload);
     } catch (error) {
-      setResultJson({ error: error.message });
+      setResultJson(buildErrorResult(error));
     } finally {
       setDetailControl((previous) => ({ ...previous, loading: false }));
     }
@@ -264,6 +363,56 @@ function App() {
       label: "Load Project Mapping",
       loadingLabel: "Loading project mapping...",
       onClick: () => loadOrgResource("projectMapping", fetchOrganizationProjectMapping),
+    },
+    {
+      id: "endpointAttachments",
+      label: "Load Endpoint Attachments",
+      loadingLabel: "Loading endpoint attachments...",
+      onClick: () =>
+        loadOrgResource("endpointAttachments", fetchOrganizationEndpointAttachments),
+    },
+    {
+      id: "deployments",
+      label: "Load Deployments",
+      loadingLabel: "Loading deployments...",
+      onClick: () => loadOrgResource("deployments", fetchOrganizationDeployments),
+    },
+    {
+      id: "dataCollectors",
+      label: "Load Data Collectors",
+      loadingLabel: "Loading data collectors...",
+      onClick: () => loadOrgResource("dataCollectors", fetchOrganizationDataCollectors),
+    },
+    {
+      id: "envGroups",
+      label: "Load Env Groups",
+      loadingLabel: "Loading env groups...",
+      onClick: () => loadOrgResource("envGroups", fetchOrganizationEnvGroups),
+    },
+    {
+      id: "appGroups",
+      label: "Load App Groups",
+      loadingLabel: "Loading app groups...",
+      onClick: () => loadOrgResource("appGroups", fetchOrganizationAppGroups),
+    },
+    {
+      id: "hostQueries",
+      label: "Load Host Queries",
+      loadingLabel: "Loading host queries...",
+      onClick: () => loadOrgResource("hostQueries", fetchOrganizationHostQueries),
+    },
+    {
+      id: "hostSecurityReports",
+      label: "Load Host Security Reports",
+      loadingLabel: "Loading host security reports...",
+      onClick: () =>
+        loadOrgResource("hostSecurityReports", fetchOrganizationHostSecurityReports),
+    },
+    {
+      id: "hostStats",
+      label: "Load Host Stats",
+      loadingLabel: "Loading host stats...",
+      onClick: () => loadOrgResource("hostStats", fetchOrganizationHostStats),
     },
     {
       id: "instances",

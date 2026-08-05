@@ -30,6 +30,35 @@ export function getLastGcpRequestPath() {
   return lastGcpRequestPath;
 }
 
+function isAuthenticationError(payload, response) {
+  const text = `${payload?.error || ""} ${payload?.details || ""} ${payload?.message || ""}`.toLowerCase();
+  return response?.status === 401 || text.includes("auth") || text.includes("unauthorized") || text.includes("invalid credentials") || text.includes("missing bearer token");
+}
+
+function buildApiError(payload, response, fallbackMessage = "API request failed") {
+  const errorPayload = {
+    error: payload?.error || fallbackMessage,
+    status: response?.status ?? null,
+    details: payload?.details ?? payload?.message ?? null,
+  };
+
+  if (payload && typeof payload === "object") {
+    Object.entries(payload).forEach(([key, value]) => {
+      if (!(key in errorPayload)) {
+        errorPayload[key] = value;
+      }
+    });
+  }
+
+  if (isAuthenticationError(payload, response)) {
+    errorPayload.possibleFix = "Make sure to run `gcloud auth login` in the terminal";
+  }
+
+  const error = new Error(errorPayload.error);
+  error.responsePayload = errorPayload;
+  return error;
+}
+
 async function apiGet(path, token, gcpPath = "", endpointConfig = {}) {
   lastRequestUrl = `${API_BASE}${path}`;
   lastGcpRequestPath = gcpPath;
@@ -52,8 +81,7 @@ async function apiGet(path, token, gcpPath = "", endpointConfig = {}) {
   const payload = await response.json().catch(() => ({ error: "Invalid JSON response" }));
 
   if (!response.ok) {
-    const errorText = payload.error || "API request failed";
-    throw new Error(errorText);
+    throw buildApiError(payload, response);
   }
 
   return payload;
@@ -73,8 +101,7 @@ async function apiPost(path) {
   const payload = await response.json().catch(() => ({ error: "Invalid JSON response" }));
 
   if (!response.ok) {
-    const errorText = payload.error || "API request failed";
-    throw new Error(errorText);
+    throw buildApiError(payload, response);
   }
 
   return payload;
@@ -100,6 +127,86 @@ export async function fetchOrganizationProjectMapping(token, orgName, endpointCo
     `/orgs/${encodedOrg}/project-mapping`,
     token,
     `/organizations/${encodedOrg}:getProjectMapping`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationEndpointAttachments(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/endpoint-attachments`,
+    token,
+    `/organizations/${encodedOrg}/endpointAttachments`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationDeployments(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/deployments`,
+    token,
+    `/organizations/${encodedOrg}/deployments`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationDataCollectors(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/datacollectors`,
+    token,
+    `/organizations/${encodedOrg}/datacollectors`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationEnvGroups(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/envgroups`,
+    token,
+    `/organizations/${encodedOrg}/envgroups`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationAppGroups(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/approups`,
+    token,
+    `/organizations/${encodedOrg}/approups`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationHostQueries(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/hostQueries`,
+    token,
+    `/organizations/${encodedOrg}/hostQueries`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationHostSecurityReports(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/hostSecurityReports`,
+    token,
+    `/organizations/${encodedOrg}/hostSecurityReports`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationHostStats(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/hostStats`,
+    token,
+    `/organizations/${encodedOrg}/hostStats`,
     endpointConfig
   );
 }
