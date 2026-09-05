@@ -14,6 +14,7 @@ import {
   fetchOrganizationDeployments,
   fetchOrganizationDataCollectors,
   fetchOrganizationEndpointAttachments,
+  fetchOrganizationKeyValueMaps,
   fetchOrganizationEnvironmentDetails,
   fetchOrganizationEnvGroups,
   fetchOrganizationAppGroups,
@@ -23,6 +24,8 @@ import {
   fetchOrganizationEnvironments,
   fetchOrganizationInstanceDetails,
   fetchOrganizationInstances,
+  fetchOrganizationOperationDetails,
+  fetchOrganizationOperations,
   fetchOrganizationProjectMapping,
   fetchOrganizationSpaceDetails,
   fetchOrganizationSharedflowDetails,
@@ -137,6 +140,8 @@ function buildPreviewGcpPath(actionId, orgName, resourceName = "") {
       return `/organizations/${encodedOrg}:getProjectMapping`;
     case "endpointAttachments":
       return `/organizations/${encodedOrg}/endpointAttachments`;
+    case "keyValueMaps":
+      return `/organizations/${encodedOrg}/keyvaluemaps`;
     case "deployments":
       return `/organizations/${encodedOrg}/deployments`;
     case "dataCollectors":
@@ -153,6 +158,8 @@ function buildPreviewGcpPath(actionId, orgName, resourceName = "") {
       return `/organizations/${encodedOrg}/hostStats`;
     case "instances":
       return `/organizations/${encodedOrg}/instances${encodedName ? `/${encodedName}` : ""}`;
+    case "operations":
+      return `/organizations/${encodedOrg}/operations${encodedName ? `/${encodedName}` : ""}`;
     case "apis":
       return `/organizations/${encodedOrg}/apis${encodedName ? `/${encodedName}` : ""}`;
     case "apiProducts":
@@ -372,6 +379,12 @@ function App() {
         loadOrgResource("endpointAttachments", fetchOrganizationEndpointAttachments),
     },
     {
+      id: "keyValueMaps",
+      label: "Load KeyValue Map",
+      loadingLabel: "Loading key value map...",
+      onClick: () => loadOrgResource("keyValueMaps", fetchOrganizationKeyValueMaps),
+    },
+    {
       id: "deployments",
       label: "Load Deployments",
       loadingLabel: "Loading deployments...",
@@ -428,6 +441,22 @@ function App() {
           listFetcher: fetchOrganizationInstances,
           detailLabel: "Instance",
           detailButtonLabel: "Load Instance Details",
+        }),
+    },
+    {
+      id: "operations",
+      label: "Load Operations",
+      loadingLabel: "Loading operations...",
+      detailLabel: "Operation",
+      detailButtonLabel: "Load Operation Details",
+      listFetcher: fetchOrganizationOperations,
+      detailFetcher: fetchOrganizationOperationDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "operations",
+          listFetcher: fetchOrganizationOperations,
+          detailLabel: "Operation",
+          detailButtonLabel: "Load Operation Details",
         }),
     },
     {

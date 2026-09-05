@@ -217,6 +217,30 @@ def get_org_endpoint_attachments(org_name: str):
     return jsonify(payload)
 
 
+@apigee_bp.get("/orgs/<org_name>/keyvaluemaps")
+def get_org_key_value_maps(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_key_value_maps(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get key value maps for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
 @apigee_bp.get("/orgs/<org_name>/deployments")
 def get_org_deployments(org_name: str):
     token = _extract_token()
@@ -417,6 +441,30 @@ def get_org_instances(org_name: str):
     return jsonify(payload)
 
 
+@apigee_bp.get("/orgs/<org_name>/operations")
+def get_org_operations(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_operations(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get operations for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
 @apigee_bp.get("/orgs/<org_name>/instances/<instance_name>")
 def get_org_instance_details(org_name: str, instance_name: str):
     token = _extract_token()
@@ -429,6 +477,30 @@ def get_org_instance_details(org_name: str, instance_name: str):
     if not response.ok:
         return jsonify({
             "error": f"Failed to get instance '{instance_name}' for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/operations/<operation_name>")
+def get_org_operation_details(org_name: str, operation_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_operation(org_name, operation_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get operation '{operation_name}' for organization '{org_name}'",
             "status": response.status_code,
             "details": response.text,
         }), response.status_code

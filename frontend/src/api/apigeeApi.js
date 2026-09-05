@@ -141,6 +141,16 @@ export async function fetchOrganizationEndpointAttachments(token, orgName, endpo
   );
 }
 
+export async function fetchOrganizationKeyValueMaps(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/keyvaluemaps`,
+    token,
+    `/organizations/${encodedOrg}/keyvaluemaps`,
+    endpointConfig
+  );
+}
+
 export async function fetchOrganizationDeployments(token, orgName, endpointConfig = {}) {
   const encodedOrg = encodeURIComponent(orgName);
   return apiGet(
@@ -217,6 +227,32 @@ export async function fetchOrganizationInstances(token, orgName, endpointConfig 
     `/orgs/${encodedOrg}/instances`,
     token,
     `/organizations/${encodedOrg}/instances`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationOperations(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/operations`,
+    token,
+    `/organizations/${encodedOrg}/operations`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationOperationDetails(
+  token,
+  orgName,
+  operationName,
+  endpointConfig = {}
+) {
+  const encodedOrg = encodeURIComponent(orgName);
+  const encodedOperation = encodeURIComponent(operationName);
+  return apiGet(
+    `/orgs/${encodedOrg}/operations/${encodedOperation}`,
+    token,
+    `/organizations/${encodedOrg}/operations/${encodedOperation}`,
     endpointConfig
   );
 }

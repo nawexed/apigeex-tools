@@ -63,6 +63,10 @@ class ApigeeClient:
         url = f"{self.base_url}/organizations/{org_name}/endpointAttachments"
         return self._get("list_endpoint_attachments", url)
 
+    def list_key_value_maps(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/keyvaluemaps"
+        return self._get("list_key_value_maps", url)
+
     def list_deployments(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/deployments"
         return self._get("list_deployments", url)
@@ -95,9 +99,17 @@ class ApigeeClient:
         url = f"{self.base_url}/organizations/{org_name}/instances"
         return self._get("list_instances", url)
 
+    def list_operations(self, org_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/operations"
+        return self._get("list_operations", url)
+
     def get_instance(self, org_name: str, instance_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/instances/{instance_name}"
         return self._get("get_instance", url)
+
+    def get_operation(self, org_name: str, operation_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/operations/{operation_name}"
+        return self._get("get_operation", url)
 
     def list_apis(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/apis"
