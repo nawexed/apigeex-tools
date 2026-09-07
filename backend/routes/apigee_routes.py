@@ -246,6 +246,14 @@ def get_org_key_value_maps(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_key_value_maps_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save key value maps config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -269,6 +277,14 @@ def get_org_deployments(org_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_deployments_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save deployments config for '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -294,6 +310,14 @@ def get_org_data_collectors(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_data_collectors_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save data collectors config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -317,6 +341,14 @@ def get_org_env_groups(org_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_env_groups_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save env groups config for '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -342,6 +374,14 @@ def get_org_app_groups(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_app_groups_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save app groups config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -365,6 +405,14 @@ def get_org_host_queries(org_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_host_queries_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save host queries config for '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -390,6 +438,14 @@ def get_org_host_security_reports(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_host_security_reports_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save host security reports config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -413,6 +469,14 @@ def get_org_host_stats(org_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_host_stats_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save host stats config for '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -470,6 +534,14 @@ def get_org_operations(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_operations_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save operations config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -494,6 +566,14 @@ def get_org_instance_details(org_name: str, instance_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_instance_detail_config(org_name, instance_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save instance detail config for '{instance_name}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 
@@ -517,6 +597,14 @@ def get_org_operation_details(org_name: str, operation_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_operation_detail_config(org_name, operation_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save operation detail config for '{operation_name}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 
@@ -605,6 +693,14 @@ def get_org_api_deployments(org_name: str, api_name: str):
         payload = response.json()
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_proxy_deployments_config(org_name, api_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save deployments for api '{api_name}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
 
     return jsonify(payload)
 

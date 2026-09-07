@@ -46,7 +46,16 @@ class ApigeeConfigs:
             "organization": existing.get("organization", {}),
             "projectMapping": existing.get("projectMapping", {}),
             "endpointAttachments": existing.get("endpointAttachments", {}),
+            "keyValueMaps": existing.get("keyValueMaps", {}),
+            "deployments": existing.get("deployments", {}),
+            "dataCollectors": existing.get("dataCollectors", {}),
+            "envGroups": existing.get("envGroups", {}),
+            "appGroups": existing.get("appGroups", {}),
+            "hostQueries": existing.get("hostQueries", {}),
+            "hostSecurityReports": existing.get("hostSecurityReports", {}),
+            "hostStats": existing.get("hostStats", {}),
             "instances": existing.get("instances", {}),
+            "operations": existing.get("operations", {}),
             "environments": existing.get("environments", {}),
             "apiProducts": existing.get("apiProducts", {}),
             "proxies": existing.get("proxies", {}),
@@ -117,6 +126,97 @@ class ApigeeConfigs:
         return merged
 
     @classmethod
+    def _save_collection_config(
+        cls,
+        org_name: str,
+        field_name: str,
+        payload: Any,
+        payload_keys: list[str],
+        identity_keys: list[str],
+    ) -> Path:
+        """Persist a list/collection resource into the org config JSON file."""
+        if not isinstance(org_name, str) or not org_name.strip():
+            raise ValueError("Organization name is required")
+        if not isinstance(field_name, str) or not field_name.strip():
+            raise ValueError("Field name is required")
+
+        target_path = cls.org_config_path(org_name)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        formatted_payload = cls._base_document(org_name)
+        incoming_items = cls._extract_list_payload(payload, payload_keys)
+        if incoming_items is None:
+            formatted_payload[field_name] = payload
+        else:
+            existing_items = (
+                formatted_payload[field_name]
+                if isinstance(formatted_payload.get(field_name), list)
+                else []
+            )
+            formatted_payload[field_name] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                identity_keys,
+            )
+
+        target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
+        return target_path
+
+    @classmethod
+    def _save_item_detail_config(
+        cls,
+        org_name: str,
+        field_name: str,
+        item_name: str,
+        payload: Any,
+        identity_keys: list[str],
+        item_label: str,
+    ) -> Path:
+        """Update a single item within a collection field using detail payload."""
+        if not isinstance(org_name, str) or not org_name.strip():
+            raise ValueError("Organization name is required")
+        if not isinstance(item_name, str) or not item_name.strip():
+            raise ValueError(f"{item_label} is required")
+
+        target_path = cls.org_config_path(org_name)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        formatted_payload = cls._base_document(org_name)
+        current_items = formatted_payload.get(field_name)
+        items: list[Any] = current_items if isinstance(current_items, list) else []
+
+        updated = False
+        for index, item in enumerate(items):
+            if isinstance(item, str) and item == item_name:
+                items[index] = payload
+                updated = True
+                break
+
+            if isinstance(item, dict):
+                item_identity = None
+                for key in identity_keys:
+                    raw_value = item.get(key)
+                    if isinstance(raw_value, str) and raw_value.strip():
+                        item_identity = cls._normalize_identity(raw_value)
+                        break
+                if item_identity == item_name:
+                    merged = dict(item)
+                    if isinstance(payload, dict):
+                        merged.update(payload)
+                    else:
+                        merged["details"] = payload
+                    items[index] = merged
+                    updated = True
+                    break
+
+        if not updated:
+            items.append(payload)
+
+        formatted_payload[field_name] = items
+        target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
+        return target_path
+
+    @classmethod
     def save_organization_config(cls, org_name: str, payload: Any) -> Path:
         """Save organization payload to data/orgs/<org-name>/<org-name>.json."""
         if not isinstance(org_name, str) or not org_name.strip():
@@ -173,6 +273,173 @@ class ApigeeConfigs:
 
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path
+
+    @classmethod
+    def save_key_value_maps_config(cls, org_name: str, payload: Any) -> Path:
+        """Save key value maps payload in existing org config JSON file."""
+        return cls._save_collection_config(
+            org_name,
+            "keyValueMaps",
+            payload,
+            ["keyvaluemaps", "keyValueMaps", "keyValueMap"],
+            ["name", "id"],
+        )
+
+    @classmethod
+    def save_deployments_config(cls, org_name: str, payload: Any) -> Path:
+        """Save org-level deployments payload in existing org config JSON file."""
+        return cls._save_collection_config(
+            org_name,
+            "deployments",
+            payload,
+            ["deployments"],
+            ["apiProxy", "name", "environment", "revision", "id"],
+        )
+
+    @classmethod
+    def save_data_collectors_config(cls, org_name: str, payload: Any) -> Path:
+        """Save data collectors payload in existing org config JSON file."""
+        return cls._save_collection_config(
+            org_name,
+            "dataCollectors",
+            payload,
+            ["dataCollectors", "datacollectors"],
+            ["name", "id"],
+        )
+
+    @classmethod
+    def save_env_groups_config(cls, org_name: str, payload: Any) -> Path:
+        """Save environment groups payload in existing org config JSON file."""
+        return cls._save_collection_config(
+            org_name,
+            "envGroups",
+            payload,
+            ["environmentGroups", "envgroups", "envGroups"],
+            ["name", "id"],
+        )
+
+    @classmethod
+    def save_app_groups_config(cls, org_name: str, payload: Any) -> Path:
+        """Save app groups payload in existing org config JSON file."""
+        return cls._save_collection_config(
+            org_name,
+            "appGroups",
+            payload,
+            ["appGroups", "appgroups", "appGroup"],
+            ["name", "id"],
+        )
+
+    @classmethod
+    def save_host_queries_config(cls, org_name: str, payload: Any) -> Path:
+        """Save host queries payload in existing org config JSON file."""
+        return cls._save_collection_config(
+            org_name,
+            "hostQueries",
+            payload,
+            ["queries", "hostQueries"],
+            ["name", "id", "report"],
+        )
+
+    @classmethod
+    def save_host_security_reports_config(cls, org_name: str, payload: Any) -> Path:
+        """Save host security reports payload in existing org config JSON file."""
+        return cls._save_collection_config(
+            org_name,
+            "hostSecurityReports",
+            payload,
+            ["securityReports", "hostSecurityReports"],
+            ["name", "id", "report"],
+        )
+
+    @classmethod
+    def save_host_stats_config(cls, org_name: str, payload: Any) -> Path:
+        """Save host stats payload in existing org config JSON file."""
+        if not isinstance(org_name, str) or not org_name.strip():
+            raise ValueError("Organization name is required")
+
+        target_path = cls.org_config_path(org_name)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        formatted_payload = cls._base_document(org_name)
+        formatted_payload["hostStats"] = payload
+        target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
+        return target_path
+
+    @classmethod
+    def save_operations_config(cls, org_name: str, payload: Any) -> Path:
+        """Save operations payload in existing org config JSON file."""
+        return cls._save_collection_config(
+            org_name,
+            "operations",
+            payload,
+            ["operations"],
+            ["name", "operation", "id"],
+        )
+
+    @classmethod
+    def save_operation_detail_config(cls, org_name: str, operation_name: str, payload: Any) -> Path:
+        """Update a single operation entry with full detail payload."""
+        return cls._save_item_detail_config(
+            org_name,
+            "operations",
+            operation_name,
+            payload,
+            ["name", "operation", "id"],
+            "Operation name",
+        )
+
+    @classmethod
+    def save_instance_detail_config(cls, org_name: str, instance_name: str, payload: Any) -> Path:
+        """Update a single instance entry with full detail payload."""
+        return cls._save_item_detail_config(
+            org_name,
+            "instances",
+            instance_name,
+            payload,
+            ["name", "instance", "instanceId", "id"],
+            "Instance name",
+        )
+
+    @classmethod
+    def save_proxy_deployments_config(cls, org_name: str, api_name: str, payload: Any) -> Path:
+        """Attach deployments payload onto a proxy entry in the org config JSON file."""
+        if not isinstance(org_name, str) or not org_name.strip():
+            raise ValueError("Organization name is required")
+        if not isinstance(api_name, str) or not api_name.strip():
+            raise ValueError("API name is required")
+
+        target_path = cls.org_config_path(org_name)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        formatted_payload = cls._base_document(org_name)
+        current_proxies = formatted_payload.get("proxies")
+        proxies: list[Any] = current_proxies if isinstance(current_proxies, list) else []
+
+        updated = False
+        for index, proxy in enumerate(proxies):
+            if isinstance(proxy, str) and proxy == api_name:
+                proxies[index] = {"name": api_name, "deployments": payload}
+                updated = True
+                break
+
+            if isinstance(proxy, dict):
+                proxy_identity = proxy.get("name") or proxy.get("apiProxy")
+                if isinstance(proxy_identity, str):
+                    proxy_identity = cls._normalize_identity(proxy_identity)
+                if proxy_identity == api_name:
+                    merged = dict(proxy)
+                    merged["deployments"] = payload
+                    proxies[index] = merged
+                    updated = True
+                    break
+
+        if not updated:
+            proxies.append({"name": api_name, "deployments": payload})
+
+        formatted_payload["proxies"] = proxies
+        target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
+        return target_path
+
 
     @classmethod
     def save_instances_config(cls, org_name: str, payload: Any) -> Path:
