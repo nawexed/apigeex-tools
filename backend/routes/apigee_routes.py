@@ -214,6 +214,14 @@ def get_org_endpoint_attachments(org_name: str):
     except ValueError:
         return jsonify({"error": "Invalid JSON response from Apigee"}), 502
 
+    try:
+        ApigeeConfigs.save_endpoint_attachments_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save endpoint attachments config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
     return jsonify(payload)
 
 

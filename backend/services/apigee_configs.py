@@ -45,6 +45,7 @@ class ApigeeConfigs:
             "createdAt": created_at or datetime.now(timezone.utc).isoformat(),
             "organization": existing.get("organization", {}),
             "projectMapping": existing.get("projectMapping", {}),
+            "endpointAttachments": existing.get("endpointAttachments", {}),
             "instances": existing.get("instances", {}),
             "environments": existing.get("environments", {}),
             "apiProducts": existing.get("apiProducts", {}),
@@ -141,6 +142,34 @@ class ApigeeConfigs:
 
         formatted_payload = cls._base_document(org_name)
         formatted_payload["projectMapping"] = payload
+
+        target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
+        return target_path
+
+    @classmethod
+    def save_endpoint_attachments_config(cls, org_name: str, payload: Any) -> Path:
+        """Save endpoint attachments payload in existing org config JSON file."""
+        if not isinstance(org_name, str) or not org_name.strip():
+            raise ValueError("Organization name is required")
+
+        target_path = cls.org_config_path(org_name)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        formatted_payload = cls._base_document(org_name)
+        incoming_items = cls._extract_list_payload(payload, ["endpointAttachments"])
+        if incoming_items is None:
+            formatted_payload["endpointAttachments"] = payload
+        else:
+            existing_items = (
+                formatted_payload["endpointAttachments"]
+                if isinstance(formatted_payload.get("endpointAttachments"), list)
+                else []
+            )
+            formatted_payload["endpointAttachments"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["name", "endpointAttachment", "id"],
+            )
 
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path

@@ -7,7 +7,10 @@ function OrgSelector({
   detailControl,
   onDetailItemChange,
   onLoadResourceDetails,
+  onLoadAllApiDetails,
 }) {
+  const detailsBusy = detailControl.loading || detailControl.bulkLoading;
+
   return (
     <div className="org-selector">
       <label htmlFor="orgSelect">Organization</label>
@@ -29,7 +32,7 @@ function OrgSelector({
           <button
             className="btn"
             onClick={action.onClick}
-            disabled={activeAction === action.id || !selectedOrg}
+            disabled={activeAction === action.id || !selectedOrg || detailsBusy}
           >
             {activeAction === action.id ? action.loadingLabel : action.label}
           </button>
@@ -41,6 +44,7 @@ function OrgSelector({
                 id={`${action.id}Select`}
                 value={detailControl.selectedItem}
                 onChange={(event) => onDetailItemChange(event.target.value)}
+                disabled={detailsBusy}
               >
                 <option value="">Select {detailControl.detailLabel.toLowerCase()}</option>
                 {detailControl.items.map((item) => (
@@ -53,12 +57,24 @@ function OrgSelector({
               <button
                 className="btn"
                 onClick={onLoadResourceDetails}
-                disabled={detailControl.loading || !detailControl.selectedItem}
+                disabled={detailsBusy || !detailControl.selectedItem}
               >
-                {detailControl.loading
+                {detailControl.loading && !detailControl.bulkLoading
                   ? `Loading ${detailControl.detailLabel.toLowerCase()} details...`
                   : detailControl.detailButtonLabel}
               </button>
+
+              {action.id === "apis" && onLoadAllApiDetails ? (
+                <button
+                  className="btn"
+                  onClick={onLoadAllApiDetails}
+                  disabled={detailsBusy || detailControl.items.length === 0}
+                >
+                  {detailControl.bulkLoading
+                    ? `Fetching all API details (${detailControl.selectedItem || "..."})...`
+                    : "Fetch All API Details"}
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>

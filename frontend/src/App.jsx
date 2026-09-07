@@ -61,6 +61,7 @@ const EMPTY_DETAIL_CONTROL = {
   items: [],
   selectedItem: "",
   loading: false,
+  bulkLoading: false,
 };
 
 function normalizeResourceName(item) {
@@ -318,6 +319,7 @@ function App() {
         items: names,
         selectedItem: names[0] || "",
         loading: false,
+        bulkLoading: false,
       });
       setResultJson(payload);
     } catch (error) {
@@ -354,8 +356,72 @@ function App() {
     } catch (error) {
       setResultJson(buildErrorResult(error));
     } finally {
-      setDetailControl((previous) => ({ ...previous, loading: false }));
+      setDetailControl((previous) => ({ ...previous, loading: false, bulkLoading: false }));
     }
+  };
+
+  const handleLoadAllApiDetails = async () => {
+    if (!tokenReady || !selectedOrg) {
+      setResultJson({ error: "Select an organization and ensure token is saved." });
+      return;
+    }
+
+    if (detailControl.resourceId !== "apis" || !detailControl.items.length) {
+      setResultJson({ error: "Load APIs first so there is a list to fetch details for." });
+      return;
+    }
+
+    const apiNames = detailControl.items;
+    const succeeded = [];
+    const failed = [];
+
+    setDetailControl((previous) => ({ ...previous, loading: true, bulkLoading: true }));
+    setResultJson({
+      message: `Fetching details for ${apiNames.length} APIs and updating org JSON...`,
+      total: apiNames.length,
+      completed: 0,
+      succeeded,
+      failed,
+    });
+
+    for (let index = 0; index < apiNames.length; index += 1) {
+      const apiName = apiNames[index];
+      setPreviewForAction("apis", apiName);
+      setDetailControl((previous) => ({
+        ...previous,
+        selectedItem: apiName,
+        loading: true,
+        bulkLoading: true,
+      }));
+      setResultJson({
+        message: `Fetching API details (${index + 1}/${apiNames.length}): ${apiName}`,
+        total: apiNames.length,
+        completed: index,
+        current: apiName,
+        succeeded: [...succeeded],
+        failed: [...failed],
+      });
+
+      try {
+        await fetchOrganizationApiDetails(token, selectedOrg, apiName, endpointConfig);
+        succeeded.push(apiName);
+      } catch (error) {
+        failed.push({
+          api: apiName,
+          error: error?.message || String(error),
+        });
+      }
+    }
+
+    updateDisplayedGcpRequestUrl();
+    setResultJson({
+      message: `Finished fetching API details. Updated data/orgs/${selectedOrg}/${selectedOrg}.json`,
+      total: apiNames.length,
+      completed: apiNames.length,
+      succeeded,
+      failed,
+    });
+    setDetailControl((previous) => ({ ...previous, loading: false, bulkLoading: false }));
   };
 
   const orgActions = [
@@ -611,6 +677,7 @@ function App() {
                 setDetailControl((previous) => ({ ...previous, selectedItem: value }))
               }
               onLoadResourceDetails={handleLoadResourceDetails}
+              onLoadAllApiDetails={handleLoadAllApiDetails}
             />
           </section>
 
