@@ -257,6 +257,32 @@ export async function fetchOrganizationOperationDetails(
   );
 }
 
+export async function fetchOrganizationReports(token, orgName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(
+    `/orgs/${encodedOrg}/reports`,
+    token,
+    `/organizations/${encodedOrg}/reports`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationReportDetails(
+  token,
+  orgName,
+  reportName,
+  endpointConfig = {}
+) {
+  const encodedOrg = encodeURIComponent(orgName);
+  const encodedReport = encodeURIComponent(reportName);
+  return apiGet(
+    `/orgs/${encodedOrg}/reports/${encodedReport}`,
+    token,
+    `/organizations/${encodedOrg}/reports/${encodedReport}`,
+    endpointConfig
+  );
+}
+
 export async function fetchOrganizationInstanceDetails(
   token,
   orgName,

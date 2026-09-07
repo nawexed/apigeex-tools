@@ -47,11 +47,15 @@ function OrgSelector({
                 disabled={detailsBusy}
               >
                 <option value="">Select {detailControl.detailLabel.toLowerCase()}</option>
-                {detailControl.items.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
+                {detailControl.items.map((item) => {
+                  const value = typeof item === "string" ? item : item.value;
+                  const label = typeof item === "string" ? item : item.label || item.value;
+                  return (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
 
               <button

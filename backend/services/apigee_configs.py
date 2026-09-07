@@ -26,6 +26,11 @@ class ApigeeConfigs:
         return cls._org_dir(org_name) / "operations.json"
 
     @classmethod
+    def reports_config_path(cls, org_name: str) -> Path:
+        """Path for custom reports file: data/orgs/<org>/reports.json."""
+        return cls._org_dir(org_name) / "reports.json"
+
+    @classmethod
     def _load_existing_config(cls, org_name: str) -> dict[str, Any]:
         target_path = cls.org_config_path(org_name)
         if not target_path.exists():
@@ -81,6 +86,33 @@ class ApigeeConfigs:
 
         existing.pop("operations", None)
         target_path.write_text(json.dumps(existing, indent=4), encoding="utf-8")
+
+    @classmethod
+    def _load_reports_document(cls, org_name: str) -> dict[str, Any]:
+        target_path = cls.reports_config_path(org_name)
+        if not target_path.exists():
+            return {}
+
+        try:
+            payload = json.loads(target_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            return {}
+
+        if not isinstance(payload, dict):
+            return {}
+
+        return payload
+
+    @classmethod
+    def _base_reports_document(cls, org_name: str) -> dict[str, Any]:
+        existing = cls._load_reports_document(org_name)
+        created_at = existing.get("createdAt") if isinstance(existing.get("createdAt"), str) else None
+
+        return {
+            "createdAt": created_at or datetime.now(timezone.utc).isoformat(),
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "reports": existing.get("reports", []),
+        }
 
     @classmethod
     def _base_document(cls, org_name: str) -> dict[str, Any]:
@@ -483,6 +515,76 @@ class ApigeeConfigs:
         formatted_payload["operations"] = operations
         target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         cls._strip_operations_from_org_config(org_name)
+        return target_path
+
+    @classmethod
+    def save_reports_config(cls, org_name: str, payload: Any) -> Path:
+        """Save custom reports list payload to data/orgs/<org>/reports.json."""
+        if not isinstance(org_name, str) or not org_name.strip():
+            raise ValueError("Organization name is required")
+
+        target_path = cls.reports_config_path(org_name)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        formatted_payload = cls._base_reports_document(org_name)
+        # Apigee list response uses "qualifier"; also accept "reports".
+        incoming_items = cls._extract_list_payload(payload, ["qualifier", "reports"])
+        if incoming_items is None:
+            formatted_payload["reports"] = payload if isinstance(payload, list) else [payload]
+        else:
+            existing_items = (
+                formatted_payload["reports"] if isinstance(formatted_payload.get("reports"), list) else []
+            )
+            formatted_payload["reports"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["name", "displayName", "id"],
+            )
+
+        target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
+        return target_path
+
+    @classmethod
+    def save_report_detail_config(cls, org_name: str, report_name: str, payload: Any) -> Path:
+        """Update a single custom report entry in data/orgs/<org>/reports.json."""
+        if not isinstance(org_name, str) or not org_name.strip():
+            raise ValueError("Organization name is required")
+        if not isinstance(report_name, str) or not report_name.strip():
+            raise ValueError("Report name is required")
+
+        target_path = cls.reports_config_path(org_name)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        formatted_payload = cls._base_reports_document(org_name)
+        current_reports = formatted_payload.get("reports")
+        reports: list[Any] = current_reports if isinstance(current_reports, list) else []
+
+        updated = False
+        for index, report in enumerate(reports):
+            if isinstance(report, str) and report == report_name:
+                reports[index] = payload
+                updated = True
+                break
+
+            if isinstance(report, dict):
+                report_identity = report.get("name") or report.get("id") or report.get("displayName")
+                if isinstance(report_identity, str):
+                    report_identity = cls._normalize_identity(report_identity)
+                if report_identity == report_name:
+                    merged = dict(report)
+                    if isinstance(payload, dict):
+                        merged.update(payload)
+                    else:
+                        merged["details"] = payload
+                    reports[index] = merged
+                    updated = True
+                    break
+
+        if not updated:
+            reports.append(payload)
+
+        formatted_payload["reports"] = reports
+        target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
         return target_path
 
     @classmethod

@@ -26,6 +26,8 @@ import {
   fetchOrganizationInstances,
   fetchOrganizationOperationDetails,
   fetchOrganizationOperations,
+  fetchOrganizationReportDetails,
+  fetchOrganizationReports,
   fetchOrganizationProjectMapping,
   fetchOrganizationSpaceDetails,
   fetchOrganizationSharedflowDetails,
@@ -45,6 +47,7 @@ import { getStoredToken, saveToken } from "./utils/tokenStore";
 const RESOURCE_ARRAY_KEYS = {
   instances: ["instances"],
   operations: ["operations"],
+  reports: ["qualifier", "reports"],
   apis: ["apis", "proxies"],
   apiProducts: ["apiProduct", "apiProducts"],
   spaces: ["spaces", "spaceNames"],
@@ -86,10 +89,42 @@ function normalizeResourceName(item) {
   return "";
 }
 
+function normalizeResourceOption(item) {
+  if (typeof item === "string") {
+    const value = normalizeResourceName(item);
+    return value ? { value, label: value } : null;
+  }
+
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const value = normalizeResourceName(item);
+  if (!value) {
+    return null;
+  }
+
+  const label =
+    typeof item.displayName === "string" && item.displayName.trim().length > 0
+      ? item.displayName.trim()
+      : value;
+
+  return { value, label };
+}
+
 function extractResourceNames(payload, resourceId) {
   const fromArray = (arr) => {
-    const names = arr.map(normalizeResourceName).filter((name) => name.trim().length > 0);
-    return [...new Set(names)];
+    const options = arr.map(normalizeResourceOption).filter(Boolean);
+    const seen = new Set();
+    const unique = [];
+    for (const option of options) {
+      if (seen.has(option.value)) {
+        continue;
+      }
+      seen.add(option.value);
+      unique.push(option);
+    }
+    return unique;
   };
 
   if (Array.isArray(payload)) {
@@ -162,6 +197,8 @@ function buildPreviewGcpPath(actionId, orgName, resourceName = "") {
       return `/organizations/${encodedOrg}/instances${encodedName ? `/${encodedName}` : ""}`;
     case "operations":
       return `/organizations/${encodedOrg}/operations${encodedName ? `/${encodedName}` : ""}`;
+    case "reports":
+      return `/organizations/${encodedOrg}/reports${encodedName ? `/${encodedName}` : ""}`;
     case "apis":
       return `/organizations/${encodedOrg}/apis${encodedName ? `/${encodedName}` : ""}`;
     case "apiProducts":
@@ -241,7 +278,9 @@ function App() {
       message:
         pageId === "operations"
           ? "Select an organization and load operations."
-          : "Select an organization and load a resource.",
+          : pageId === "reports"
+            ? "Select an organization and load reports."
+            : "Select an organization and load a resource.",
     });
   };
 
@@ -338,7 +377,7 @@ function App() {
         detailLabel: action.detailLabel,
         detailButtonLabel: action.detailButtonLabel,
         items: names,
-        selectedItem: names[0] || "",
+        selectedItem: names[0]?.value || "",
         loading: false,
         bulkLoading: false,
       });
@@ -392,7 +431,9 @@ function App() {
       return;
     }
 
-    const apiNames = detailControl.items;
+    const apiNames = detailControl.items.map((item) =>
+      typeof item === "string" ? item : item.value
+    );
     const succeeded = [];
     const failed = [];
 
@@ -663,10 +704,38 @@ function App() {
     },
   ];
 
-  const pageActions = activePage === "operations" ? operationsActions : orgActions;
-  const pageTitle = activePage === "operations" ? "Operations" : "Organization Controls";
-  // handleLoadResourceDetails looks up actions from orgActions; include operationsActions too
-  const allActions = [...orgActions, ...operationsActions];
+  const reportsActions = [
+    {
+      id: "reports",
+      label: "Load Reports",
+      loadingLabel: "Loading reports...",
+      detailLabel: "Report",
+      detailButtonLabel: "Load Report Details",
+      listFetcher: fetchOrganizationReports,
+      detailFetcher: fetchOrganizationReportDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "reports",
+          listFetcher: fetchOrganizationReports,
+          detailLabel: "Report",
+          detailButtonLabel: "Load Report Details",
+        }),
+    },
+  ];
+
+  const pageActions =
+    activePage === "operations"
+      ? operationsActions
+      : activePage === "reports"
+        ? reportsActions
+        : orgActions;
+  const pageTitle =
+    activePage === "operations"
+      ? "Operations"
+      : activePage === "reports"
+        ? "Reports"
+        : "Organization Controls";
+  const allActions = [...orgActions, ...operationsActions, ...reportsActions];
 
   return (
     <div className="app-shell">

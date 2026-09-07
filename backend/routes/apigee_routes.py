@@ -609,6 +609,70 @@ def get_org_operation_details(org_name: str, operation_name: str):
     return jsonify(payload)
 
 
+@apigee_bp.get("/orgs/<org_name>/reports")
+def get_org_reports(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_reports(org_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get reports for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_reports_config(org_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save reports config for '{org_name}'",
+            "details": str(exc),
+        }), 500
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/reports/<report_name>")
+def get_org_report_details(org_name: str, report_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_report(org_name, report_name)
+
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get report '{report_name}' for organization '{org_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    try:
+        ApigeeConfigs.save_report_detail_config(org_name, report_name, payload)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save report detail config for '{report_name}' in organization '{org_name}'",
+            "details": str(exc),
+        }), 500
+
+    return jsonify(payload)
+
+
 @apigee_bp.get("/orgs/<org_name>/apis")
 def get_org_apis(org_name: str):
     token = _extract_token()

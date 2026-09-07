@@ -103,6 +103,12 @@ class ApigeeClient:
         url = f"{self.base_url}/organizations/{org_name}/operations"
         return self._get("list_operations", url)
 
+    def list_reports(self, org_name: str, expand: bool = True) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/reports"
+        if expand:
+            url = f"{url}?expand=true"
+        return self._get("list_reports", url)
+
     def get_instance(self, org_name: str, instance_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/instances/{instance_name}"
         return self._get("get_instance", url)
@@ -110,6 +116,10 @@ class ApigeeClient:
     def get_operation(self, org_name: str, operation_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/operations/{operation_name}"
         return self._get("get_operation", url)
+
+    def get_report(self, org_name: str, report_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/reports/{report_name}"
+        return self._get("get_report", url)
 
     def list_apis(self, org_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/apis"
