@@ -44,6 +44,7 @@ import { getStoredToken, saveToken } from "./utils/tokenStore";
 
 const RESOURCE_ARRAY_KEYS = {
   instances: ["instances"],
+  operations: ["operations"],
   apis: ["apis", "proxies"],
   apiProducts: ["apiProduct", "apiProducts"],
   spaces: ["spaces", "spaceNames"],
@@ -193,6 +194,7 @@ function App() {
   const [activeAction, setActiveAction] = useState("");
   const [detailControl, setDetailControl] = useState(EMPTY_DETAIL_CONTROL);
   const [loadingToken, setLoadingToken] = useState(false);
+  const [activePage, setActivePage] = useState("organizations");
   const requestPathRef = useRef("");
 
   const tokenReady = useMemo(() => token && token.trim().length > 0, [token]);
@@ -222,6 +224,25 @@ function App() {
     requestPathRef.current = "";
     setRequestPath("");
     setRequestUrl("");
+  };
+
+  const handlePageChange = (pageId) => {
+    if (pageId === activePage) {
+      return;
+    }
+
+    setActivePage(pageId);
+    setActiveAction("");
+    setDetailControl(EMPTY_DETAIL_CONTROL);
+    requestPathRef.current = "";
+    setRequestPath("");
+    setRequestUrl("");
+    setResultJson({
+      message:
+        pageId === "operations"
+          ? "Select an organization and load operations."
+          : "Select an organization and load a resource.",
+    });
   };
 
   const updateDisplayedGcpRequestUrl = (overridePath = "") => {
@@ -336,7 +357,7 @@ function App() {
       return;
     }
 
-    const action = orgActions.find((item) => item.id === detailControl.resourceId);
+    const action = allActions.find((item) => item.id === detailControl.resourceId);
     if (!action || !action.detailFetcher) {
       setResultJson({ error: "No details endpoint configured for this resource." });
       return;
@@ -510,22 +531,6 @@ function App() {
         }),
     },
     {
-      id: "operations",
-      label: "Load Operations",
-      loadingLabel: "Loading operations...",
-      detailLabel: "Operation",
-      detailButtonLabel: "Load Operation Details",
-      listFetcher: fetchOrganizationOperations,
-      detailFetcher: fetchOrganizationOperationDetails,
-      onClick: () =>
-        loadOrgResourceList({
-          id: "operations",
-          listFetcher: fetchOrganizationOperations,
-          detailLabel: "Operation",
-          detailButtonLabel: "Load Operation Details",
-        }),
-    },
-    {
       id: "apis",
       label: "Load APIs",
       loadingLabel: "Loading APIs...",
@@ -639,6 +644,30 @@ function App() {
     },
   ];
 
+  const operationsActions = [
+    {
+      id: "operations",
+      label: "Load Operations",
+      loadingLabel: "Loading operations...",
+      detailLabel: "Operation",
+      detailButtonLabel: "Load Operation Details",
+      listFetcher: fetchOrganizationOperations,
+      detailFetcher: fetchOrganizationOperationDetails,
+      onClick: () =>
+        loadOrgResourceList({
+          id: "operations",
+          listFetcher: fetchOrganizationOperations,
+          detailLabel: "Operation",
+          detailButtonLabel: "Load Operation Details",
+        }),
+    },
+  ];
+
+  const pageActions = activePage === "operations" ? operationsActions : orgActions;
+  const pageTitle = activePage === "operations" ? "Operations" : "Organization Controls";
+  // handleLoadResourceDetails looks up actions from orgActions; include operationsActions too
+  const allActions = [...orgActions, ...operationsActions];
+
   return (
     <div className="app-shell">
       <TopBar>
@@ -659,25 +688,25 @@ function App() {
       </TopBar>
 
       <div className="body-shell">
-        <SideNav />
+        <SideNav activePage={activePage} onNavigate={handlePageChange} />
 
         <main className="content-panel">
           <section className="control-panel">
-            <h2>Organization Controls</h2>
+            <h2>{pageTitle}</h2>
             {loadingOrgs ? <p>Loading organizations...</p> : null}
 
             <OrgSelector
               orgs={orgs}
               selectedOrg={selectedOrg}
               onOrgChange={handleOrgChange}
-              actions={orgActions}
+              actions={pageActions}
               activeAction={activeAction}
               detailControl={detailControl}
               onDetailItemChange={(value) =>
                 setDetailControl((previous) => ({ ...previous, selectedItem: value }))
               }
               onLoadResourceDetails={handleLoadResourceDetails}
-              onLoadAllApiDetails={handleLoadAllApiDetails}
+              onLoadAllApiDetails={activePage === "organizations" ? handleLoadAllApiDetails : undefined}
             />
           </section>
 

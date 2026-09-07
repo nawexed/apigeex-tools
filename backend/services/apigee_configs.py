@@ -21,6 +21,11 @@ class ApigeeConfigs:
         return cls._org_dir(normalized) / f"{normalized}.json"
 
     @classmethod
+    def operations_config_path(cls, org_name: str) -> Path:
+        """Path for the separate operations log file: data/orgs/<org>/operations.json."""
+        return cls._org_dir(org_name) / "operations.json"
+
+    @classmethod
     def _load_existing_config(cls, org_name: str) -> dict[str, Any]:
         target_path = cls.org_config_path(org_name)
         if not target_path.exists():
@@ -35,6 +40,47 @@ class ApigeeConfigs:
             return {}
 
         return payload
+
+    @classmethod
+    def _load_operations_document(cls, org_name: str) -> dict[str, Any]:
+        target_path = cls.operations_config_path(org_name)
+        if not target_path.exists():
+            return {}
+
+        try:
+            payload = json.loads(target_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            return {}
+
+        if not isinstance(payload, dict):
+            return {}
+
+        return payload
+
+    @classmethod
+    def _base_operations_document(cls, org_name: str) -> dict[str, Any]:
+        existing = cls._load_operations_document(org_name)
+        created_at = existing.get("createdAt") if isinstance(existing.get("createdAt"), str) else None
+
+        return {
+            "createdAt": created_at or datetime.now(timezone.utc).isoformat(),
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "operations": existing.get("operations", []),
+        }
+
+    @classmethod
+    def _strip_operations_from_org_config(cls, org_name: str) -> None:
+        """Remove legacy operations key from the main org JSON if present."""
+        target_path = cls.org_config_path(org_name)
+        if not target_path.exists():
+            return
+
+        existing = cls._load_existing_config(org_name)
+        if "operations" not in existing:
+            return
+
+        existing.pop("operations", None)
+        target_path.write_text(json.dumps(existing, indent=4), encoding="utf-8")
 
     @classmethod
     def _base_document(cls, org_name: str) -> dict[str, Any]:
@@ -55,7 +101,6 @@ class ApigeeConfigs:
             "hostSecurityReports": existing.get("hostSecurityReports", {}),
             "hostStats": existing.get("hostStats", {}),
             "instances": existing.get("instances", {}),
-            "operations": existing.get("operations", {}),
             "environments": existing.get("environments", {}),
             "apiProducts": existing.get("apiProducts", {}),
             "proxies": existing.get("proxies", {}),
@@ -367,26 +412,78 @@ class ApigeeConfigs:
 
     @classmethod
     def save_operations_config(cls, org_name: str, payload: Any) -> Path:
-        """Save operations payload in existing org config JSON file."""
-        return cls._save_collection_config(
-            org_name,
-            "operations",
-            payload,
-            ["operations"],
-            ["name", "operation", "id"],
-        )
+        """Save operations list payload to data/orgs/<org>/operations.json."""
+        if not isinstance(org_name, str) or not org_name.strip():
+            raise ValueError("Organization name is required")
+
+        target_path = cls.operations_config_path(org_name)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        formatted_payload = cls._base_operations_document(org_name)
+        incoming_items = cls._extract_list_payload(payload, ["operations"])
+        if incoming_items is None:
+            formatted_payload["operations"] = payload if isinstance(payload, list) else [payload]
+        else:
+            existing_items = (
+                formatted_payload["operations"]
+                if isinstance(formatted_payload.get("operations"), list)
+                else []
+            )
+            formatted_payload["operations"] = cls._merge_list_items(
+                existing_items,
+                incoming_items,
+                ["name", "operation", "id"],
+            )
+
+        target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
+        cls._strip_operations_from_org_config(org_name)
+        return target_path
 
     @classmethod
     def save_operation_detail_config(cls, org_name: str, operation_name: str, payload: Any) -> Path:
-        """Update a single operation entry with full detail payload."""
-        return cls._save_item_detail_config(
-            org_name,
-            "operations",
-            operation_name,
-            payload,
-            ["name", "operation", "id"],
-            "Operation name",
-        )
+        """Update a single operation entry in data/orgs/<org>/operations.json."""
+        if not isinstance(org_name, str) or not org_name.strip():
+            raise ValueError("Organization name is required")
+        if not isinstance(operation_name, str) or not operation_name.strip():
+            raise ValueError("Operation name is required")
+
+        target_path = cls.operations_config_path(org_name)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        formatted_payload = cls._base_operations_document(org_name)
+        current_operations = formatted_payload.get("operations")
+        operations: list[Any] = current_operations if isinstance(current_operations, list) else []
+
+        updated = False
+        for index, operation in enumerate(operations):
+            if isinstance(operation, str) and operation == operation_name:
+                operations[index] = payload
+                updated = True
+                break
+
+            if isinstance(operation, dict):
+                operation_identity = (
+                    operation.get("name") or operation.get("operation") or operation.get("id")
+                )
+                if isinstance(operation_identity, str):
+                    operation_identity = cls._normalize_identity(operation_identity)
+                if operation_identity == operation_name:
+                    merged = dict(operation)
+                    if isinstance(payload, dict):
+                        merged.update(payload)
+                    else:
+                        merged["details"] = payload
+                    operations[index] = merged
+                    updated = True
+                    break
+
+        if not updated:
+            operations.append(payload)
+
+        formatted_payload["operations"] = operations
+        target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
+        cls._strip_operations_from_org_config(org_name)
+        return target_path
 
     @classmethod
     def save_instance_detail_config(cls, org_name: str, instance_name: str, payload: Any) -> Path:
