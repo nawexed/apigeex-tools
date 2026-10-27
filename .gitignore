@@ -3,6 +3,9 @@ backend/.venv/
 backend/node_modules/
 frontend/node_modules/
 data/orgs/
-*/__pycache__/
+__pycache__/
 *.pyc
 data/access_token.txt
+backend/routes/__pycache__/apigee_routes.cpython-314.pyc
+backend/services/__pycache__/apigee_client.cpython-314.pyc
+backend/services/__pycache__/apigee_configs.cpython-314.pyc
