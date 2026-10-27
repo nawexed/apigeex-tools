@@ -1,5 +1,6 @@
 const NAV_ITEMS = [
   { id: "organizations", label: "Organizations" },
+  { id: "hosts", label: "Hosts" },
   { id: "operations", label: "Operations" },
   { id: "reports", label: "Reports" },
   { id: "settings", label: "Settings", disabled: true },

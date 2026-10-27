@@ -258,6 +258,85 @@ body {
   word-break: break-all;
 }
 
+.hosts-report-content {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hosts-report-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.hosts-report-search {
+  display: grid;
+  gap: 0.3rem;
+  min-width: min(100%, 320px);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.hosts-report-search input {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+.hosts-report-count {
+  padding-bottom: 0.55rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.hosts-report-table-wrap {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.hosts-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  background: #ffffff;
+}
+
+.hosts-report-table th,
+.hosts-report-table td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.hosts-report-table th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  color: var(--ink);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.hosts-report-table tbody tr:hover {
+  background: rgba(15, 118, 110, 0.04);
+}
+
+.hosts-report-empty {
+  color: var(--muted);
+  text-align: center !important;
+}
+
 @media (max-width: 900px) {
   .top-bar {
     flex-direction: column;

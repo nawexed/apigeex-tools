@@ -1,6 +1,8 @@
 import json
 import subprocess
+import sys
 from pathlib import Path
+from typing import Any
 
 from flask import Blueprint, jsonify, request
 
@@ -103,6 +105,164 @@ def get_saved_token():
 def get_orgs_from_config():
     organizations = _load_orgs_from_config()
     return jsonify({"organizations": organizations})
+
+
+@apigee_bp.post("/orgs/<org_name>/load-balancer")
+def run_org_load_balancer(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    project_root = PROJECT_ROOT
+    script_path = project_root / "backend" / "services" / "gcp_routing_rules.py"
+    if not script_path.exists():
+        return jsonify({"error": f"Routing export script not found: {script_path}"}), 500
+
+    try:
+        completed = subprocess.run(
+            [sys.executable, str(script_path), org_name, "--output-dir", str(project_root / "data" / "orgs")],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+            cwd=str(project_root),
+        )
+    except FileNotFoundError:
+        return jsonify({"error": "Python runtime not found for routing export."}), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "Timed out while exporting routing rules."}), 504
+
+    if completed.returncode != 0:
+        details = completed.stderr.strip() or completed.stdout.strip() or "Unknown routing export error"
+        return jsonify({"error": "Routing export failed.", "details": details}), 500
+
+    output_dir = project_root / "data" / "orgs" / org_name
+    output_file = output_dir / f"{org_name}_routing_rules.json"
+    if not output_file.exists():
+        return jsonify({
+            "error": "Routing export succeeded but the org summary file was not created.",
+            "expectedFile": str(output_file),
+        }), 500
+
+    try:
+        payload = json.loads(output_file.read_text(encoding="utf-8"))
+    except (TypeError, ValueError, OSError) as exc:
+        return jsonify({"error": "Routing export file exists but could not be parsed.", "details": str(exc)}), 500
+
+    return jsonify({
+        "message": f"Load balancer export completed for {org_name}.",
+        "outputFile": str(output_file),
+        "data": payload,
+    })
+
+
+@apigee_bp.get("/orgs/<org_name>/hosts-report")
+def get_org_hosts_report(org_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    org_dir = DATA_DIR / "orgs" / org_name
+    org_file = org_dir / f"{org_name}.json"
+    routing_file = org_dir / f"{org_name}_routing_rules.json"
+
+    if not org_file.exists():
+        return jsonify({"error": f"Organization config not found for '{org_name}'."}), 404
+    if not routing_file.exists():
+        return jsonify({"error": f"Routing rules file not found for '{org_name}'."}), 404
+
+    try:
+        org_payload = json.loads(org_file.read_text(encoding="utf-8"))
+        routing_payload = json.loads(routing_file.read_text(encoding="utf-8"))
+    except (TypeError, ValueError, OSError) as exc:
+        return jsonify({"error": "Failed to read org or routing data.", "details": str(exc)}), 500
+
+    env_hosts = set()
+    env_groups = org_payload.get("envGroups", [])
+    if isinstance(env_groups, list):
+        for group in env_groups:
+            if not isinstance(group, dict):
+                continue
+            hostnames = group.get("hostnames", [])
+            if not isinstance(hostnames, list):
+                continue
+            for hostname in hostnames:
+                if isinstance(hostname, str):
+                    env_hosts.add(hostname.strip().lower())
+
+    routing_rows = []
+    all_load_balancers = routing_payload.get("load_balancer", [])
+    if isinstance(all_load_balancers, list):
+        for load_balancer in all_load_balancers:
+            if not isinstance(load_balancer, dict):
+                continue
+            region = load_balancer.get("region") or ""
+            for rule in load_balancer.get("routing_rules", []):
+                if not isinstance(rule, dict):
+                    continue
+                hosts = rule.get("hosts", [])
+                if not isinstance(hosts, list):
+                    continue
+                routing_rows.append({
+                    "region": region,
+                    "name": rule.get("name") or "",
+                    "routingHosts": [host.strip().lower() for host in hosts if isinstance(host, str) and host.strip()],
+                    "pathPrefixMatch": rule.get("pathPrefixMatch") or "",
+                    "pathPrefixRewrite": rule.get("pathPrefixRewrite") or "",
+                    "service": rule.get("service") or "",
+                })
+
+    routes_by_host: dict[str, list[dict[str, Any]]] = {}
+    for route in routing_rows:
+        for routing_host in route["routingHosts"]:
+            routes_by_host.setdefault(routing_host, []).append(route)
+
+    rows = []
+    for env_host in sorted(env_hosts):
+        routes = routes_by_host.get(env_host, [])
+        if routes:
+            for route in routes:
+                rows.append({
+                    "envGroupHostname": env_host,
+                    "routingHost": env_host,
+                    "region": route["region"],
+                    "name": route["name"],
+                    "pathPrefixMatch": route["pathPrefixMatch"],
+                    "pathPrefixRewrite": route["pathPrefixRewrite"],
+                    "service": route["service"],
+                })
+        else:
+            rows.append({
+                "envGroupHostname": env_host,
+                "routingHost": "",
+                "region": "",
+                "name": "",
+                "pathPrefixMatch": "",
+                "pathPrefixRewrite": "",
+                "service": "",
+            })
+
+    for route in routing_rows:
+        for routing_host in route["routingHosts"]:
+            if routing_host in env_hosts:
+                continue
+            rows.append({
+                "envGroupHostname": "",
+                "routingHost": routing_host,
+                "region": route["region"],
+                "name": route["name"],
+                "pathPrefixMatch": route["pathPrefixMatch"],
+                "pathPrefixRewrite": route["pathPrefixRewrite"],
+                "service": route["service"],
+            })
+
+    rows.sort(key=lambda row: (row.get("envGroupHostname") or row.get("routingHost") or ""))
+    return jsonify({
+        "type": "hostsReport",
+        "org": org_name,
+        "total": len(rows),
+        "rows": rows,
+    })
 
 
 @apigee_bp.get("/orgs")
@@ -959,6 +1119,99 @@ def get_org_environment_details(org_name: str, env_name: str):
         }), 500
 
     return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/environments/<env_name>/debugmask")
+def get_org_environment_debug_mask(org_name: str, env_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.get_debug_mask(org_name, env_name)
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get debug mask for environment '{env_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    return jsonify(payload)
+
+
+@apigee_bp.get("/orgs/<org_name>/environments/<env_name>/targetservers")
+def get_org_target_servers(org_name: str, env_name: str):
+    token = _extract_token()
+    if not token:
+        return jsonify({"error": "Missing bearer token"}), 401
+
+    client = ApigeeClient(token)
+    response = client.list_target_servers(org_name, env_name)
+    if not response.ok:
+        return jsonify({
+            "error": f"Failed to get target servers for environment '{env_name}'",
+            "status": response.status_code,
+            "details": response.text,
+        }), response.status_code
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return jsonify({"error": "Invalid JSON response from Apigee"}), 502
+
+    if isinstance(payload, dict):
+        target_server_names = payload.get("targetServers", [])
+    elif isinstance(payload, list):
+        target_server_names = payload
+    else:
+        return jsonify({"error": "Unexpected target servers response format from Apigee"}), 502
+
+    if not isinstance(target_server_names, list):
+        return jsonify({"error": "Unexpected target servers response format from Apigee"}), 502
+
+    target_servers = []
+    for target_server in target_server_names:
+        target_server_name = (
+            target_server if isinstance(target_server, str)
+            else target_server.get("name") if isinstance(target_server, dict)
+            else None
+        )
+        if not isinstance(target_server_name, str) or not target_server_name:
+            continue
+
+        detail_response = client.get_target_server(org_name, env_name, target_server_name)
+        if not detail_response.ok:
+            return jsonify({
+                "error": f"Failed to get target server '{target_server_name}' in environment '{env_name}'",
+                "status": detail_response.status_code,
+                "details": detail_response.text,
+            }), detail_response.status_code
+
+        try:
+            details = detail_response.json()
+        except ValueError:
+            return jsonify({
+                "error": f"Invalid target server response for '{target_server_name}'",
+            }), 502
+
+        if isinstance(details, dict):
+            details.setdefault("name", target_server_name)
+        target_servers.append(details)
+
+    try:
+        ApigeeConfigs.save_target_servers_config(org_name, env_name, target_servers)
+    except (ValueError, OSError, TypeError) as exc:
+        return jsonify({
+            "error": f"Failed to save target servers for environment '{env_name}'",
+            "details": str(exc),
+        }), 500
+
+    return jsonify({"targetServers": target_servers})
 
 
 @apigee_bp.get("/orgs/<org_name>/developers")

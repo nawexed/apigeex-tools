@@ -153,6 +153,21 @@ class ApigeeClient:
         url = f"{self.base_url}/organizations/{org_name}/environments"
         return self._get("list_environments", url)
 
+    def list_target_servers(self, org_name: str, env_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/environments/{env_name}/targetservers"
+        return self._get("list_target_servers", url)
+
+    def get_debug_mask(self, org_name: str, env_name: str) -> requests.Response:
+        url = f"{self.base_url}/organizations/{org_name}/environments/{env_name}/debugmask"
+        return self._get("get_debug_mask", url)
+
+    def get_target_server(self, org_name: str, env_name: str, target_server_name: str) -> requests.Response:
+        url = (
+            f"{self.base_url}/organizations/{org_name}/environments/{env_name}"
+            f"/targetservers/{target_server_name}"
+        )
+        return self._get("get_target_server", url)
+
     def get_environment(self, org_name: str, env_name: str) -> requests.Response:
         url = f"{self.base_url}/organizations/{org_name}/environments/{env_name}"
         return self._get("get_environment", url)

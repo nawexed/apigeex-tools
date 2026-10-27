@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildGcpRequestUrl,
   fetchAndSaveTokenFromBackend,
+  fetchHostsReport,
   fetchOrganizationApiDetails,
+  runLoadBalancerForOrg,
   fetchOrganizationApiProductDetails,
   fetchOrganizationApiProducts,
   fetchOrganizationApis,
@@ -17,11 +19,13 @@ import {
   fetchOrganizationKeyValueMaps,
   fetchOrganizationEnvironmentDetails,
   fetchOrganizationEnvGroups,
+  fetchOrganizationDebugMask,
   fetchOrganizationAppGroups,
   fetchOrganizationHostQueries,
   fetchOrganizationHostSecurityReports,
   fetchOrganizationHostStats,
   fetchOrganizationEnvironments,
+  fetchOrganizationTargetServers,
   fetchOrganizationInstanceDetails,
   fetchOrganizationInstances,
   fetchOrganizationOperationDetails,
@@ -207,6 +211,10 @@ function buildPreviewGcpPath(actionId, orgName, resourceName = "") {
       return `/organizations/${encodedOrg}/spaces${encodedName ? `/${encodedName}` : ""}`;
     case "environments":
       return `/organizations/${encodedOrg}/environments${encodedName ? `/${encodedName}` : ""}`;
+    case "targetServers":
+      return `/organizations/${encodedOrg}/environments/${encodedName}/targetservers`;
+    case "debugMask":
+      return `/organizations/${encodedOrg}/environments/${encodedName}/debugmask`;
     case "developers":
       return `/organizations/${encodedOrg}/developers${encodedName ? `/${encodedName}` : ""}`;
     case "apps":
@@ -220,11 +228,12 @@ function buildPreviewGcpPath(actionId, orgName, resourceName = "") {
 
 function App() {
   const [token, setToken] = useState(getStoredToken());
-  const [endpointMode, setEndpointMode] = useState("global");
+  const [endpointMode, setEndpointMode] = useState("regional");
   const [region, setRegion] = useState("us");
   const [orgs, setOrgs] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState("");
   const [resultJson, setResultJson] = useState({ message: "Loading organizations from config..." });
+  const [hostsReportFilter, setHostsReportFilter] = useState("");
   const [requestPath, setRequestPath] = useState("");
   const [requestUrl, setRequestUrl] = useState("");
   const [loadingOrgs, setLoadingOrgs] = useState(false);
@@ -257,6 +266,7 @@ function App() {
 
   const handleOrgChange = (orgName) => {
     setSelectedOrg(orgName);
+    setHostsReportFilter("");
     setDetailControl(EMPTY_DETAIL_CONTROL);
     requestPathRef.current = "";
     setRequestPath("");
@@ -269,6 +279,7 @@ function App() {
     }
 
     setActivePage(pageId);
+    setHostsReportFilter("");
     setActiveAction("");
     setDetailControl(EMPTY_DETAIL_CONTROL);
     requestPathRef.current = "";
@@ -390,6 +401,49 @@ function App() {
     }
   };
 
+  const handleLoadBalancer = async () => {
+    if (!tokenReady || !selectedOrg) {
+      setResultJson({ error: "Select an organization and ensure token is saved." });
+      return;
+    }
+
+    setActiveAction("loadBalancer");
+    setRequestPath("");
+    setRequestUrl("");
+    setResultJson({ message: `Running load balancer export for ${selectedOrg}...` });
+
+    try {
+      const payload = await runLoadBalancerForOrg(token, selectedOrg);
+      setResultJson(payload);
+    } catch (error) {
+      setResultJson(buildErrorResult(error));
+    } finally {
+      setActiveAction("");
+    }
+  };
+
+  const handleHostsReport = async () => {
+    if (!tokenReady || !selectedOrg) {
+      setResultJson({ error: "Select an organization and ensure token is saved." });
+      return;
+    }
+
+    setHostsReportFilter("");
+    setActiveAction("hostsReport");
+    setRequestPath("");
+    setRequestUrl("");
+    setResultJson({ message: `Generating hosts report for ${selectedOrg}...` });
+
+    try {
+      const payload = await fetchHostsReport(token, selectedOrg);
+      setResultJson(payload);
+    } catch (error) {
+      setResultJson(buildErrorResult(error));
+    } finally {
+      setActiveAction("");
+    }
+  };
+
   const handleLoadResourceDetails = async () => {
     if (!tokenReady || !selectedOrg || !detailControl.selectedItem) {
       setResultJson({ error: "Select an organization and a resource name first." });
@@ -417,6 +471,54 @@ function App() {
       setResultJson(buildErrorResult(error));
     } finally {
       setDetailControl((previous) => ({ ...previous, loading: false, bulkLoading: false }));
+    }
+  };
+
+  const handleLoadTargetServers = async () => {
+    if (!tokenReady || !selectedOrg || !detailControl.selectedItem) {
+      setResultJson({ error: "Select an organization and an environment first." });
+      return;
+    }
+
+    setPreviewForAction("targetServers", detailControl.selectedItem);
+    setDetailControl((previous) => ({ ...previous, targetServersLoading: true }));
+    try {
+      const payload = await fetchOrganizationTargetServers(
+        token,
+        selectedOrg,
+        detailControl.selectedItem,
+        endpointConfig
+      );
+      updateDisplayedGcpRequestUrl();
+      setResultJson(payload);
+    } catch (error) {
+      setResultJson(buildErrorResult(error));
+    } finally {
+      setDetailControl((previous) => ({ ...previous, targetServersLoading: false }));
+    }
+  };
+
+  const handleLoadDebugMask = async () => {
+    if (!tokenReady || !selectedOrg || !detailControl.selectedItem) {
+      setResultJson({ error: "Select an organization and an environment first." });
+      return;
+    }
+
+    setPreviewForAction("debugMask", detailControl.selectedItem);
+    setDetailControl((previous) => ({ ...previous, debugMaskLoading: true }));
+    try {
+      const payload = await fetchOrganizationDebugMask(
+        token,
+        selectedOrg,
+        detailControl.selectedItem,
+        endpointConfig
+      );
+      updateDisplayedGcpRequestUrl();
+      setResultJson(payload);
+    } catch (error) {
+      setResultJson(buildErrorResult(error));
+    } finally {
+      setDetailControl((previous) => ({ ...previous, debugMaskLoading: false }));
     }
   };
 
@@ -723,19 +825,45 @@ function App() {
     },
   ];
 
+  const hostsActions = [
+    {
+      id: "loadBalancer",
+      label: "Load Balancer",
+      loadingLabel: "Running load balancer...",
+      onClick: handleLoadBalancer,
+    },
+    {
+      id: "hostsReport",
+      label: "Hosts Report",
+      loadingLabel: "Generating hosts report...",
+      onClick: handleHostsReport,
+    },
+  ];
+
   const pageActions =
     activePage === "operations"
       ? operationsActions
       : activePage === "reports"
         ? reportsActions
-        : orgActions;
+        : activePage === "hosts"
+          ? hostsActions
+          : orgActions;
   const pageTitle =
     activePage === "operations"
       ? "Operations"
       : activePage === "reports"
         ? "Reports"
-        : "Organization Controls";
+        : activePage === "hosts"
+          ? "Hosts"
+          : "Organization Controls";
   const allActions = [...orgActions, ...operationsActions, ...reportsActions];
+  const normalizedHostsReportFilter = hostsReportFilter.trim().toLowerCase();
+  const hostsReportRows = Array.isArray(resultJson?.rows) ? resultJson.rows : [];
+  const filteredHostsReportRows = hostsReportRows.filter((row) =>
+    Object.values(row).some((value) =>
+      String(value ?? "").toLowerCase().includes(normalizedHostsReportFilter)
+    )
+  );
 
   return (
     <div className="app-shell">
@@ -775,6 +903,8 @@ function App() {
                 setDetailControl((previous) => ({ ...previous, selectedItem: value }))
               }
               onLoadResourceDetails={handleLoadResourceDetails}
+              onLoadTargetServers={handleLoadTargetServers}
+              onLoadDebugMask={handleLoadDebugMask}
               onLoadAllApiDetails={activePage === "organizations" ? handleLoadAllApiDetails : undefined}
             />
           </section>
@@ -786,7 +916,64 @@ function App() {
                 <strong>GCP Request URL:</strong> {requestUrl}
               </p>
             ) : null}
-            <JsonViewer data={resultJson} />
+
+            {resultJson?.type === "hostsReport" && Array.isArray(resultJson.rows) ? (
+              <div className="hosts-report-content">
+                <div className="hosts-report-toolbar">
+                  <label className="hosts-report-search">
+                    <span>Search rows</span>
+                    <input
+                      type="search"
+                      value={hostsReportFilter}
+                      onChange={(event) => setHostsReportFilter(event.target.value)}
+                      placeholder="Hostname, region, service..."
+                    />
+                  </label>
+                  <span className="hosts-report-count" aria-live="polite">
+                    Showing {filteredHostsReportRows.length} of {hostsReportRows.length} rows
+                  </span>
+                </div>
+
+                <div className="hosts-report-table-wrap">
+                  <table className="hosts-report-table">
+                    <thead>
+                      <tr>
+                        <th>Env Group Hostname</th>
+                        <th>Routing Host</th>
+                        <th>Region</th>
+                        <th>Routing Rule Name</th>
+                        <th>Path Prefix Match</th>
+                        <th>Path Prefix Rewrite</th>
+                        <th>Service</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredHostsReportRows.length > 0 ? (
+                        filteredHostsReportRows.map((row, index) => (
+                          <tr key={`${row.envGroupHostname || row.routingHost || "row"}-${index}`}>
+                            <td>{row.envGroupHostname || ""}</td>
+                            <td>{row.routingHost || ""}</td>
+                            <td>{row.region || ""}</td>
+                            <td>{row.name || ""}</td>
+                            <td>{row.pathPrefixMatch || ""}</td>
+                            <td>{row.pathPrefixRewrite || ""}</td>
+                            <td>{row.service || ""}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td className="hosts-report-empty" colSpan="7">
+                            No matching rows
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <JsonViewer data={resultJson} />
+            )}
           </section>
         </main>
       </div>

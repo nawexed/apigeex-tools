@@ -116,6 +116,33 @@ export async function fetchOrganizations(token) {
   throw new Error("Unexpected organizations payload format.");
 }
 
+export async function fetchHostsReport(token, orgName) {
+  const encodedOrg = encodeURIComponent(orgName);
+  return apiGet(`/orgs/${encodedOrg}/hosts-report`, token, `/organizations/${encodedOrg}/hosts-report`, {
+    endpointMode: "global",
+    region: "us",
+  });
+}
+
+export async function runLoadBalancerForOrg(token, orgName) {
+  const encodedOrg = encodeURIComponent(orgName);
+  const response = await fetch(`${API_BASE}/orgs/${encodedOrg}/load-balancer`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && token.trim().length > 0 ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const payload = await response.json().catch(() => ({ error: "Invalid JSON response" }));
+
+  if (!response.ok) {
+    throw buildApiError(payload, response, "Load balancer export failed");
+  }
+
+  return payload;
+}
+
 export async function fetchOrganizationDetails(token, orgName, endpointConfig = {}) {
   const encodedOrg = encodeURIComponent(orgName);
   return apiGet(`/orgs/${encodedOrg}`, token, `/organizations/${encodedOrg}`, endpointConfig);
@@ -387,6 +414,28 @@ export async function fetchOrganizationEnvironments(token, orgName, endpointConf
     `/orgs/${encodedOrg}/environments`,
     token,
     `/organizations/${encodedOrg}/environments`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationTargetServers(token, orgName, environmentName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  const encodedEnvironment = encodeURIComponent(environmentName);
+  return apiGet(
+    `/orgs/${encodedOrg}/environments/${encodedEnvironment}/targetservers`,
+    token,
+    `/organizations/${encodedOrg}/environments/${encodedEnvironment}/targetservers`,
+    endpointConfig
+  );
+}
+
+export async function fetchOrganizationDebugMask(token, orgName, environmentName, endpointConfig = {}) {
+  const encodedOrg = encodeURIComponent(orgName);
+  const encodedEnvironment = encodeURIComponent(environmentName);
+  return apiGet(
+    `/orgs/${encodedOrg}/environments/${encodedEnvironment}/debugmask`,
+    token,
+    `/organizations/${encodedOrg}/environments/${encodedEnvironment}/debugmask`,
     endpointConfig
   );
 }

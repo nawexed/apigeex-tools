@@ -7,9 +7,15 @@ function OrgSelector({
   detailControl,
   onDetailItemChange,
   onLoadResourceDetails,
+  onLoadTargetServers,
+  onLoadDebugMask,
   onLoadAllApiDetails,
 }) {
-  const detailsBusy = detailControl.loading || detailControl.bulkLoading;
+  const detailsBusy =
+    detailControl.loading ||
+    detailControl.bulkLoading ||
+    detailControl.targetServersLoading ||
+    detailControl.debugMaskLoading;
 
   return (
     <div className="org-selector">
@@ -67,6 +73,28 @@ function OrgSelector({
                   ? `Loading ${detailControl.detailLabel.toLowerCase()} details...`
                   : detailControl.detailButtonLabel}
               </button>
+
+              {action.id === "environments" && onLoadTargetServers ? (
+                <button
+                  className="btn"
+                  onClick={onLoadTargetServers}
+                  disabled={detailsBusy || !detailControl.selectedItem}
+                >
+                  {detailControl.targetServersLoading
+                    ? "Loading target servers..."
+                    : "Load Target Servers"}
+                </button>
+              ) : null}
+
+              {action.id === "environments" && onLoadDebugMask ? (
+                <button
+                  className="btn"
+                  onClick={onLoadDebugMask}
+                  disabled={detailsBusy || !detailControl.selectedItem}
+                >
+                  {detailControl.debugMaskLoading ? "Loading debug mask..." : "Load Debug Mask"}
+                </button>
+              ) : null}
 
               {action.id === "apis" && onLoadAllApiDetails ? (
                 <button

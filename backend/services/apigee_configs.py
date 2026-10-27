@@ -740,6 +740,42 @@ class ApigeeConfigs:
         return target_path
 
     @classmethod
+    def save_target_servers_config(
+        cls,
+        org_name: str,
+        env_name: str,
+        target_servers: list[dict[str, Any]],
+    ) -> Path:
+        """Save target-server details under the matching environment."""
+        if not isinstance(org_name, str) or not org_name.strip():
+            raise ValueError("Organization name is required")
+        if not isinstance(env_name, str) or not env_name.strip():
+            raise ValueError("Environment name is required")
+
+        target_path = cls.org_config_path(org_name)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        formatted_payload = cls._base_document(org_name)
+        environments = formatted_payload.get("environments")
+        if not isinstance(environments, list):
+            environments = []
+
+        for index, environment in enumerate(environments):
+            if isinstance(environment, str) and environment == env_name:
+                environments[index] = {"name": env_name, "targetServers": target_servers}
+                break
+            if isinstance(environment, dict):
+                identity = environment.get("name") or environment.get("environment")
+                if identity == env_name:
+                    environment["targetServers"] = target_servers
+                    break
+        else:
+            environments.append({"name": env_name, "targetServers": target_servers})
+
+        formatted_payload["environments"] = environments
+        target_path.write_text(json.dumps(formatted_payload, indent=4), encoding="utf-8")
+        return target_path
+
+    @classmethod
     def save_proxies_config(cls, org_name: str, payload: Any) -> Path:
         """Save proxies payload in existing org config JSON file."""
         if not isinstance(org_name, str) or not org_name.strip():
